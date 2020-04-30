@@ -20,7 +20,6 @@ package org.jetbrains.plugins.ideavim.extension
 
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.editor.Editor
-import com.intellij.testFramework.UsefulTestCase
 import com.maddyhome.idea.vim.VimPlugin
 import com.maddyhome.idea.vim.command.CommandState
 import com.maddyhome.idea.vim.command.MappingMode
@@ -102,39 +101,6 @@ class OpMappingTest : VimTestCase() {
     myFixture.checkResult("I${c} found it in a legendary land")
 
     enterCommand("set TestExtension")
-    typeText(parseKeys("Q"))
-    myFixture.checkResult("I ${c}found it in a legendary land")
-  }
-
-  fun `test disable extension as extension point`() {
-    configureByText("${c}I found it in a legendary land")
-    typeText(parseKeys("Q"))
-    myFixture.checkResult("I${c} found it in a legendary land")
-
-    VimExtension.EP_NAME.getPoint(null).unregisterExtension(TestExtension::class.java)
-    UsefulTestCase.assertEmpty(VimPlugin.getKey().getKeyMappingByOwner(extension.owner))
-    typeText(parseKeys("Q"))
-    myFixture.checkResult("I${c} found it in a legendary land")
-
-    VimExtension.EP_NAME.getPoint(null).registerExtension(extension)
-    UsefulTestCase.assertEmpty(VimPlugin.getKey().getKeyMappingByOwner(extension.owner))
-    enableExtensions("TestExtension")
-    typeText(parseKeys("Q"))
-    myFixture.checkResult("I ${c}found it in a legendary land")
-  }
-
-  fun `test disable disposed extension`() {
-    configureByText("${c}I found it in a legendary land")
-    typeText(parseKeys("Q"))
-    myFixture.checkResult("I${c} found it in a legendary land")
-
-    enterCommand("set noTestExtension")
-    VimExtension.EP_NAME.getPoint(null).unregisterExtension(TestExtension::class.java)
-    typeText(parseKeys("Q"))
-    myFixture.checkResult("I${c} found it in a legendary land")
-
-    VimExtension.EP_NAME.getPoint(null).registerExtension(extension)
-    enableExtensions("TestExtension")
     typeText(parseKeys("Q"))
     myFixture.checkResult("I ${c}found it in a legendary land")
   }
