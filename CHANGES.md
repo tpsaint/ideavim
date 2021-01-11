@@ -22,7 +22,12 @@ It is important to distinguish EAP from traditional pre-release software.
 Please note that the quality of EAP versions may at times be way below even
 usual beta standards.
 
-## 0.64-2020.1, 2020-12-23
+## To Be Released
+
+### Fixes:
+* [VIM-2202](https://youtrack.jetbrains.com/issue/VIM-2202) Fix macro recording for ex command and search
+
+## 0.64, 2020-12-23
 
 ### Merged PRs:
 * [260](https://github.com/JetBrains/ideavim/pull/260) by [Matt Ellis](https://github.com/citizenmatt): Refactor SearchGroup
