@@ -43,7 +43,7 @@ class ExBeanClass : AbstractExtensionPointBean() {
       logger<ExBeanClass>().error("IdeaVim doesn't accept contributions to `vimActions` extension points. Please create a plugin using `VimExtension`. Plugin to blame: $pluginId")
       return
     }
-    CommandParser.getInstance().addHandler(this)
+    CommandParser.addHandler(this)
   }
 }
 
