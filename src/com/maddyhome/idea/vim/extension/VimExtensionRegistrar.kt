@@ -79,7 +79,7 @@ object VimExtensionRegistrar {
     if (VimScriptParser.executingVimScript) {
       delayedExtensionEnabling += extensionBean
     } else {
-      extensionBean.instance.init()
+      extensionBean.handler.init()
       logger.info("IdeaVim extension '$name' initialized")
     }
   }
@@ -87,7 +87,7 @@ object VimExtensionRegistrar {
   @JvmStatic
   fun enableDelayedExtensions() {
     delayedExtensionEnabling.forEach {
-      it.instance.init()
+      it.handler.init()
       logger.info("IdeaVim extension '${it.name}' initialized")
     }
     delayedExtensionEnabling.clear()

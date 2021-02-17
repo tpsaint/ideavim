@@ -182,7 +182,7 @@ object CommandParser {
       node = node.getChild(element) ?: return null
     }
     val handlerHolder = node.commandHandler
-    return handlerHolder?.instance
+    return handlerHolder?.handler
   }
 
   /**
@@ -472,8 +472,8 @@ object CommandParser {
         handlerHolder.names != null -> {
           commands(*handlerHolder.names!!.split(",").toTypedArray())
         }
-        handlerHolder.instance is ComplicatedNameExCommand -> {
-          (handlerHolder.instance as ComplicatedNameExCommand).names
+        handlerHolder.handler is ComplicatedNameExCommand -> {
+          (handlerHolder.handler as ComplicatedNameExCommand).names
         }
         else -> throw RuntimeException("Cannot create an ex command: $handlerHolder")
     }
