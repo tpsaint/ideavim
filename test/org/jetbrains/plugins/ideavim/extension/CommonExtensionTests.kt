@@ -223,12 +223,12 @@ class PlugMissingKeys : VimTestCase() {
     super.setUp()
 
     extension = TestExtension.createBean()
-    VimExtension.EP_NAME.point.registerExtension(extension, VimPlugin.getInstance())
+    VimExtension.EP_NAME.getPoint(null).registerExtension(extension, VimPlugin.getInstance())
   }
 
   override fun tearDown() {
     @Suppress("DEPRECATION")
-    VimExtension.EP_NAME.point.unregisterExtension(extension)
+    VimExtension.EP_NAME.getPoint(null).unregisterExtension(extension)
     super.tearDown()
   }
 
