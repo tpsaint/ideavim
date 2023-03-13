@@ -124,6 +124,12 @@
         <alias name="chrisbra/matchit"/>
       </aliases>
     </vimExtension>
+    
+    <vimExtension implementation="com.maddyhome.idea.vim.extension.camelcase.CamelCaseExtension" name="camelcase">
+      <aliases>
+        <alias name="camelcase"/>
+      </aliases>
+    </vimExtension>
   </extensions>
 
   <!--  IdeaVim extensions-->
