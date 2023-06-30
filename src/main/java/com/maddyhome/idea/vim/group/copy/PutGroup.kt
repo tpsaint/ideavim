@@ -24,7 +24,6 @@ import com.maddyhome.idea.vim.api.ExecutionContext
 import com.maddyhome.idea.vim.api.VimCaret
 import com.maddyhome.idea.vim.api.VimEditor
 import com.maddyhome.idea.vim.api.getLineEndOffset
-import com.maddyhome.idea.vim.api.globalOptions
 import com.maddyhome.idea.vim.api.injector
 import com.maddyhome.idea.vim.api.setChangeMarks
 import com.maddyhome.idea.vim.command.SelectionType
@@ -43,27 +42,24 @@ import com.maddyhome.idea.vim.newapi.IjVimCaret
 import com.maddyhome.idea.vim.newapi.IjVimEditor
 import com.maddyhome.idea.vim.newapi.ij
 import com.maddyhome.idea.vim.newapi.vim
-import com.maddyhome.idea.vim.options.OptionConstants
-import com.maddyhome.idea.vim.options.helpers.ClipboardOptionHelper
 import com.maddyhome.idea.vim.put.TextData
 import com.maddyhome.idea.vim.put.PutData
-import com.maddyhome.idea.vim.put.VimPasteProvider
 import com.maddyhome.idea.vim.put.VimPutBase
 import com.maddyhome.idea.vim.register.RegisterConstants
 import java.awt.datatransfer.DataFlavor
 
 internal class PutGroup : VimPutBase() {
-  override fun getProviderForPasteViaIde(
+  private fun getProviderForPasteViaIde(
     editor: VimEditor,
     typeInRegister: SelectionType,
     data: PutData,
-  ): VimPasteProvider? {
+  ): PasteProvider? {
     val visualSelection = data.visualSelection
     if (visualSelection != null && visualSelection.typeInEditor.isBlock) return null
     if ((typeInRegister.isLine || typeInRegister.isChar) && data.count == 1) {
       val context = DataManager.getInstance().getDataContext(editor.ij.contentComponent)
       val provider = PlatformDataKeys.PASTE_PROVIDER.getData(context)
-      if (provider != null && provider.isPasteEnabled(context)) return IjPasteProvider(provider)
+      if (provider != null && provider.isPasteEnabled(context)) return provider
     }
     return null
   }
@@ -82,14 +78,15 @@ internal class PutGroup : VimPutBase() {
 
   @RWLockLabel.SelfSynchronized
   override fun putTextViaIde(
-    pasteProvider: VimPasteProvider,
     vimEditor: VimEditor,
     vimContext: ExecutionContext,
     text: TextData,
     subMode: VimStateMachine.SubMode,
     data: PutData,
     additionalData: Map<String, Any>,
-  ) {
+  ): Boolean {
+    val pasteProvider = getProviderForPasteViaIde(vimEditor, text.typeInRegister, data) ?: return false
+
     val editor = (vimEditor as IjVimEditor).editor
     val context = vimContext.context as DataContext
     val carets: MutableMap<Caret, RangeMarker> = mutableMapOf()
@@ -109,10 +106,10 @@ internal class PutGroup : VimPutBase() {
 
     val registerChar = text.registerChar
     if (registerChar != null && registerChar in RegisterConstants.CLIPBOARD_REGISTERS) {
-      (pasteProvider as IjPasteProvider).pasteProvider.performPaste(context)
+      pasteProvider.performPaste(context)
     } else {
       pasteKeepingClipboard(text) {
-        (pasteProvider as IjPasteProvider).pasteProvider.performPaste(context)
+        pasteProvider.performPaste(context)
       }
     }
 
@@ -147,6 +144,7 @@ internal class PutGroup : VimPutBase() {
         data.caretAfterInsertedText,
       )
     }
+    return true
   }
 
   /**
@@ -218,5 +216,3 @@ internal class PutGroup : VimPutBase() {
     return editor.getLineEndOffset(endLine, true)
   }
 }
-
-internal class IjPasteProvider(val pasteProvider: PasteProvider) : VimPasteProvider

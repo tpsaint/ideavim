@@ -28,5 +28,3 @@ public interface VimPut {
   @RWLockLabel.SelfSynchronized
   public fun putTextForCaret(editor: VimEditor, caret: VimCaret, context: ExecutionContext, data: PutData, updateVisualMarks: Boolean = false, modifyRegister: Boolean = true): Boolean
 }
-
-public interface VimPasteProvider

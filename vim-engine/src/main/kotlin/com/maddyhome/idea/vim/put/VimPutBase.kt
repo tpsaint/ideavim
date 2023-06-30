@@ -535,10 +535,10 @@ public abstract class VimPutBase : VimPut {
     val visualSelection = data.visualSelection
     val subMode = visualSelection?.typeInEditor?.toSubMode() ?: VimStateMachine.SubMode.NONE
     if (injector.globalOptions().clipboard.contains(OptionConstants.clipboard_ideaput)) {
-      val idePasteProvider = getProviderForPasteViaIde(editor, text.typeInRegister, data)
-      if (idePasteProvider != null) {
-        logger.debug("Perform put via idea paste")
-        putTextViaIde(idePasteProvider, editor, context, text, subMode, data, additionalData)
+      logger.debug("Performing put via idea paste")
+      val result = putTextViaIde(editor, context, text, subMode, data, additionalData)
+      if (result) {
+        logger.debug("Put via IDE successful")
         return
       }
     }
@@ -553,20 +553,13 @@ public abstract class VimPutBase : VimPut {
 
   @RWLockLabel.SelfSynchronized
   public abstract fun putTextViaIde(
-    pasteProvider: VimPasteProvider,
     vimEditor: VimEditor,
     vimContext: ExecutionContext,
     text: TextData,
     subMode: VimStateMachine.SubMode,
     data: PutData,
     additionalData: Map<String, Any>,
-  )
-
-  public abstract fun getProviderForPasteViaIde(
-    editor: VimEditor,
-    typeInRegister: SelectionType,
-    data: PutData,
-  ): VimPasteProvider?
+  ): Boolean
 
   public companion object {
     public val logger: VimLogger by lazy { vimLogger<VimPutBase>() }
