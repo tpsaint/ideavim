@@ -38,13 +38,13 @@ public sealed class PutTextBaseAction(
       var result = true
       injector.application.runWriteAction {
         caretToPutData.forEach {
-          result = injector.put.putTextForCaret(editor, it.key, context, it.value) && result
+          result = injector.put.putTextForCaret(editor, it.key, context, it.value) != null && result
         }
       }
       result
     } else {
       val putData = getPutDataForCaret(sortedCarets.single(), count)
-      injector.put.putText(editor, context, putData, operatorArguments)
+      injector.put.putText(editor, context, putData, operatorArguments) != null
     }
   }
 

@@ -44,6 +44,7 @@ import com.maddyhome.idea.vim.newapi.ij
 import com.maddyhome.idea.vim.newapi.vim
 import com.maddyhome.idea.vim.put.TextData
 import com.maddyhome.idea.vim.put.PutData
+import com.maddyhome.idea.vim.put.VimPut
 import com.maddyhome.idea.vim.put.VimPutBase
 import com.maddyhome.idea.vim.register.RegisterConstants
 import java.awt.datatransfer.DataFlavor
@@ -71,7 +72,7 @@ internal class PutGroup : VimPutBase() {
     additionalData: Map<String, Any>,
     context: ExecutionContext,
     text: TextData
-  ): VimCaret {
+  ): Pair<VimCaret, com.maddyhome.idea.vim.put.RangeMarker>? {
     NotificationService.notifyAboutIdeaPut(editor)
     return super.putForCaret(editor, caret, data, additionalData, context, text)
   }
@@ -84,8 +85,8 @@ internal class PutGroup : VimPutBase() {
     subMode: VimStateMachine.SubMode,
     data: PutData,
     additionalData: Map<String, Any>,
-  ): Boolean {
-    val pasteProvider = getProviderForPasteViaIde(vimEditor, text.typeInRegister, data) ?: return false
+  ): Map<VimCaret, com.maddyhome.idea.vim.put.RangeMarker>? {
+    val pasteProvider = getProviderForPasteViaIde(vimEditor, text.typeInRegister, data) ?: return null
 
     val editor = (vimEditor as IjVimEditor).editor
     val context = vimContext.context as DataContext
@@ -113,6 +114,7 @@ internal class PutGroup : VimPutBase() {
       }
     }
 
+    val caretsToPastedText = mutableMapOf<VimCaret, com.maddyhome.idea.vim.put.RangeMarker>()
     val lastPastedRegion = if (carets.size == 1) editor.getUserData(EditorEx.LAST_PASTED_REGION) else null
     carets.forEach { (caret, point) ->
       val startOffset = point.startOffset
@@ -143,8 +145,21 @@ internal class PutGroup : VimPutBase() {
         subMode,
         data.caretAfterInsertedText,
       )
+      caretsToPastedText[vimCaret] = createRangeMarker(vimEditor, startOffset, endOffset)
     }
-    return true
+    return caretsToPastedText
+  }
+
+  override fun createRangeMarker(editor: VimEditor, startOffset: Int, endOffset: Int): com.maddyhome.idea.vim.put.RangeMarker {
+    return object : com.maddyhome.idea.vim.put.RangeMarker {
+      val ijRangeMarker = editor.ij.document.createRangeMarker(startOffset, endOffset)
+
+      override val range: TextRange
+        get() {
+          val ijTextRange = ijRangeMarker.textRange
+          return TextRange(ijTextRange.startOffset, ijTextRange.endOffset)
+        }
+    }
   }
 
   /**

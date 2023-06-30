@@ -12,6 +12,7 @@ import com.maddyhome.idea.vim.api.ExecutionContext
 import com.maddyhome.idea.vim.api.VimCaret
 import com.maddyhome.idea.vim.api.VimEditor
 import com.maddyhome.idea.vim.command.OperatorArguments
+import com.maddyhome.idea.vim.common.TextRange
 import com.maddyhome.idea.vim.helper.RWLockLabel
 
 public interface VimPut {
@@ -23,8 +24,19 @@ public interface VimPut {
     operatorArguments: OperatorArguments,
     updateVisualMarks: Boolean = false,
     modifyRegister: Boolean = true,
-  ): Boolean
+  ): Map<VimCaret, RangeMarker>?
 
   @RWLockLabel.SelfSynchronized
-  public fun putTextForCaret(editor: VimEditor, caret: VimCaret, context: ExecutionContext, data: PutData, updateVisualMarks: Boolean = false, modifyRegister: Boolean = true): Boolean
+  public fun putTextForCaret(
+    editor: VimEditor,
+    caret: VimCaret,
+    context: ExecutionContext,
+    data: PutData,
+    updateVisualMarks: Boolean = false,
+    modifyRegister: Boolean = true,
+  ): RangeMarker?
+}
+
+public interface RangeMarker {
+  public val range: TextRange
 }

@@ -55,17 +55,18 @@ public abstract class VimPutBase : VimPut {
     operatorArguments: OperatorArguments,
     updateVisualMarks: Boolean,
     saveToRegister: Boolean,
-  ): Boolean {
+  ): Map<VimCaret, RangeMarker>? {
     val additionalData = collectPreModificationData(editor, data)
     deleteSelectedText(editor, data, operatorArguments, saveToRegister)
-    val processedText = processText(null, data) ?: return false
-    putTextAndSetCaretPosition(editor, context, processedText, data, additionalData)
+    val processedText = processText(null, data) ?: return null
+    val caretsToText = putTextAndSetCaretPosition(editor, context, processedText, data, additionalData)
 
     if (updateVisualMarks) {
+      // todo use carets to text and do it for all the carets
       wrapInsertedTextWithVisualMarks(editor.currentCaret(), data, processedText)
     }
 
-    return true
+    return caretsToText
   }
 
   private fun collectPreModificationData(editor: VimEditor, data: PutData): Map<String, Any> {
@@ -479,10 +480,13 @@ public abstract class VimPutBase : VimPut {
     additionalData: Map<String, Any>,
     context: ExecutionContext,
     text: TextData,
-  ): VimCaret {
+  ): Pair<VimCaret, RangeMarker>? {
     var updated = caret
-    if (data.visualSelection?.typeInEditor?.isLine == true && editor.isOneLineMode()) return updated
+    if (data.visualSelection?.typeInEditor?.isLine == true && editor.isOneLineMode()) return null
     val startOffsets = prepareDocumentAndGetStartOffsets(editor, updated, text.typeInRegister, data, additionalData)
+
+    val blockStartOffset = startOffsets.firstOrNull()
+    var blockEndOffset: Int? = null
 
     startOffsets.forEach { startOffset ->
       val subMode = data.visualSelection?.typeInEditor?.toSubMode() ?: VimStateMachine.SubMode.NONE
@@ -491,7 +495,6 @@ public abstract class VimPutBase : VimPut {
         startOffset, data.count, data.indent, data.caretAfterInsertedText,
       )
       updated = updatedCaret
-      injector.markService.setChangeMarks(updatedCaret, TextRange(startOffset, endOffset))
       updated = moveCaretToEndPosition(
         editor,
         updatedCaret,
@@ -501,12 +504,19 @@ public abstract class VimPutBase : VimPut {
         subMode,
         data.caretAfterInsertedText,
       )
+      blockEndOffset = endOffset
     }
-    return updated
+
+    assert(blockStartOffset != null && blockEndOffset != null)
+    injector.markService.setChangeMarks(updated, TextRange(blockStartOffset!!, blockEndOffset!!))
+
+    val startOffset = min(blockStartOffset, blockEndOffset!!)
+    val endOffset = max(blockStartOffset, blockEndOffset!!)
+    return Pair(caret, createRangeMarker(editor, startOffset, endOffset))
   }
 
   @RWLockLabel.SelfSynchronized
-  override fun putTextForCaret(editor: VimEditor, caret: VimCaret, context: ExecutionContext, data: PutData, updateVisualMarks: Boolean, modifyRegister: Boolean): Boolean {
+  override fun putTextForCaret(editor: VimEditor, caret: VimCaret, context: ExecutionContext, data: PutData, updateVisualMarks: Boolean, modifyRegister: Boolean): RangeMarker? {
     val additionalData = collectPreModificationData(editor, data)
     data.visualSelection?.let {
       deleteSelectedText(
@@ -516,38 +526,39 @@ public abstract class VimPutBase : VimPut {
         modifyRegister,
       )
     }
-    val processedText = processText(caret, data) ?: return false
-    val updatedCaret = putForCaret(editor, caret, data, additionalData, context, processedText)
+    val processedText = processText(caret, data) ?: return null
+    val (updatedCaret, rangeMarker) = putForCaret(editor, caret, data, additionalData, context, processedText) ?: return null
     if (updateVisualMarks) {
+      // todo pass there rangeMarker?
       wrapInsertedTextWithVisualMarks(updatedCaret, data, processedText)
     }
-    return true
+    return rangeMarker
   }
 
   @RWLockLabel.SelfSynchronized
-  public fun putTextAndSetCaretPosition(
+  private fun putTextAndSetCaretPosition(
     editor: VimEditor,
     context: ExecutionContext,
     text: TextData,
     data: PutData,
     additionalData: Map<String, Any>,
-  ) {
+  ): Map<VimCaret, RangeMarker>? {
     val visualSelection = data.visualSelection
     val subMode = visualSelection?.typeInEditor?.toSubMode() ?: VimStateMachine.SubMode.NONE
     if (injector.globalOptions().clipboard.contains(OptionConstants.clipboard_ideaput)) {
       logger.debug("Performing put via idea paste")
-      val result = putTextViaIde(editor, context, text, subMode, data, additionalData)
-      if (result) {
+      val caretsToText = putTextViaIde(editor, context, text, subMode, data, additionalData)
+      if (caretsToText != null) {
         logger.debug("Put via IDE successful")
-        return
+        return caretsToText
       }
     }
 
     logger.debug("Perform put via plugin")
     val myCarets = visualSelection?.caretsAndSelections?.keys?.sortedByDescending { it.getBufferPosition() }
       ?: editor.sortedNativeCarets().reversed()
-    injector.application.runWriteAction {
-      myCarets.forEach { caret -> putForCaret(editor, caret, data, additionalData, context, text) }
+    return injector.application.runWriteAction {
+      myCarets.mapNotNull { caret -> putForCaret(editor, caret, data, additionalData, context, text) }.toMap()
     }
   }
 
@@ -559,11 +570,13 @@ public abstract class VimPutBase : VimPut {
     subMode: VimStateMachine.SubMode,
     data: PutData,
     additionalData: Map<String, Any>,
-  ): Boolean
+  ): Map<VimCaret, RangeMarker>?
 
   public companion object {
     public val logger: VimLogger by lazy { vimLogger<VimPutBase>() }
   }
+
+  protected abstract fun createRangeMarker(editor: VimEditor, startOffset: Int, endOffset: Int): RangeMarker
 }
 
 // This is taken from StringUtil of IntelliJ IDEA
@@ -584,3 +597,4 @@ private fun CharSequence.getLineBreakCount(): Int {
   }
   return count
 }
+

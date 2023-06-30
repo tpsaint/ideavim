@@ -50,7 +50,7 @@ public sealed class PutVisualTextBaseAction(
     var result = true
     injector.application.runWriteAction {
       caretToPutData.forEach {
-        result = injector.put.putTextForCaret(editor, it.key, context, it.value, true, modifyRegister) && result
+        result = injector.put.putTextForCaret(editor, it.key, context, it.value, true, modifyRegister) != null && result
       }
     }
     return result
