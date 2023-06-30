@@ -19,6 +19,7 @@ import com.maddyhome.idea.vim.group.visual.VimSelection
 import com.maddyhome.idea.vim.handler.VisualOperatorActionHandler
 import com.maddyhome.idea.vim.helper.enumSetOf
 import com.maddyhome.idea.vim.put.PutData
+import com.maddyhome.idea.vim.put.TextData
 import java.util.*
 
 /**
@@ -59,7 +60,7 @@ public sealed class PutVisualTextBaseAction(
     val lastRegisterChar = injector.registerGroup.lastRegisterChar
     val register = caret.registerStorage.getRegister(lastRegisterChar)
     val textData = register?.let {
-      PutData.TextData(
+      TextData(
         register.text ?: injector.parser.toPrintableString(register.keys),
         register.type,
         register.transferableData,

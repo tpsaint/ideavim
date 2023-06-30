@@ -32,10 +32,4 @@ public data class PutData(
     val typeInEditor: SelectionType,
   )
 
-  public data class TextData(
-    val rawText: String?,
-    val typeInRegister: SelectionType,
-    val transferableData: List<Any>,
-    val registerChar: Char?,
-  )
 }

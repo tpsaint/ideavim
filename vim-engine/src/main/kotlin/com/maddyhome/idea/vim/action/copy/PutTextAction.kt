@@ -16,7 +16,7 @@ import com.maddyhome.idea.vim.command.Command
 import com.maddyhome.idea.vim.command.OperatorArguments
 import com.maddyhome.idea.vim.handler.ChangeEditorActionHandler
 import com.maddyhome.idea.vim.put.PutData
-import com.maddyhome.idea.vim.put.PutData.TextData
+import com.maddyhome.idea.vim.put.TextData
 
 public sealed class PutTextBaseAction(
   private val insertTextBeforeCaret: Boolean,

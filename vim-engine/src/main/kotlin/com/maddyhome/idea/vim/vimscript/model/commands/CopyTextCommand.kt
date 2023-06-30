@@ -18,6 +18,7 @@ import com.maddyhome.idea.vim.command.SelectionType
 import com.maddyhome.idea.vim.ex.ExException
 import com.maddyhome.idea.vim.ex.ranges.Ranges
 import com.maddyhome.idea.vim.put.PutData
+import com.maddyhome.idea.vim.put.TextData
 import com.maddyhome.idea.vim.vimscript.model.ExecutionResult
 
 /**
@@ -37,7 +38,7 @@ public data class CopyTextCommand(val ranges: Ranges, val argument: String) : Co
       val line = goToLineCommand.commandRanges.getFirstLine(editor, caret)
 
       val transferableData = injector.clipboardManager.getTransferableData(editor, range, text)
-      val textData = PutData.TextData(text, SelectionType.LINE_WISE, transferableData, null)
+      val textData = TextData(text, SelectionType.LINE_WISE, transferableData, null)
       val putData = PutData(
         textData,
         null,

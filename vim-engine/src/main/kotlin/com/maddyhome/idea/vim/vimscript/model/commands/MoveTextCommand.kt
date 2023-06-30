@@ -29,6 +29,7 @@ import com.maddyhome.idea.vim.helper.Msg
 import com.maddyhome.idea.vim.mark.Mark
 import com.maddyhome.idea.vim.mark.VimMark
 import com.maddyhome.idea.vim.put.PutData
+import com.maddyhome.idea.vim.put.TextData
 import com.maddyhome.idea.vim.vimscript.model.ExecutionResult
 import kotlin.math.min
 
@@ -79,7 +80,7 @@ public data class MoveTextCommand(val ranges: Ranges, val argument: String) : Co
     val selectionEndOffset = lastSelectionInfo.end?.let { editor.bufferPositionToOffset(it) }
 
     val text = editor.getText(range)
-    val textData = PutData.TextData(text, SelectionType.LINE_WISE, emptyList(), null)
+    val textData = TextData(text, SelectionType.LINE_WISE, emptyList(), null)
 
     val dropNewLineInEnd = (line + linesMoved == editor.lineCount() - 1 && text.last() == '\n') ||
       (lineRange.endLine == editor.lineCount() - 1)

@@ -38,6 +38,7 @@ import com.maddyhome.idea.vim.key.OperatorFunction
 import com.maddyhome.idea.vim.newapi.ij
 import com.maddyhome.idea.vim.options.helpers.ClipboardOptionHelper
 import com.maddyhome.idea.vim.put.PutData
+import com.maddyhome.idea.vim.put.TextData
 import org.jetbrains.annotations.NonNls
 import java.awt.event.KeyEvent
 import javax.swing.KeyStroke
@@ -184,7 +185,7 @@ internal class VimSurroundExtension : VimExtension {
           .map { surrounding ->
             val innerValue = injector.parser.toPrintableString(surrounding.innerText!!)
             val text = newSurround?.let { it.first + innerValue + it.second } ?: innerValue
-            val textData = PutData.TextData(text, SelectionType.CHARACTER_WISE, emptyList(), null)
+            val textData = TextData(text, SelectionType.CHARACTER_WISE, emptyList(), null)
             val putData = PutData(textData, null, 1, insertTextBeforeCaret = true, rawIndent = true, caretAfterInsertedText = false)
 
             surrounding.caret to putData

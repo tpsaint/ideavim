@@ -39,6 +39,7 @@ import com.maddyhome.idea.vim.newapi.ij
 import com.maddyhome.idea.vim.newapi.vim
 import com.maddyhome.idea.vim.options.helpers.ClipboardOptionHelper
 import com.maddyhome.idea.vim.put.PutData
+import com.maddyhome.idea.vim.put.TextData
 import org.jetbrains.annotations.NonNls
 
 internal class ReplaceWithRegister : VimExtension {
@@ -154,7 +155,7 @@ internal class ReplaceWithRegister : VimExtension {
         usedType = SelectionType.CHARACTER_WISE
       }
 
-      val textData = PutData.TextData(usedText, usedType, savedRegister.transferableData, savedRegister.name)
+      val textData = TextData(usedText, usedType, savedRegister.transferableData, savedRegister.name)
 
       val putData = PutData(
         textData,
