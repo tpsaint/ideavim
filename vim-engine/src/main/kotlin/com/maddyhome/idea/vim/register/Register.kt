@@ -55,6 +55,7 @@ public class Register {
     this.rawText = rawText
   }
 
+  // TODO make it non-null
   public val text: String?
     get() {
       val builder = StringBuilder()

@@ -148,8 +148,8 @@ internal class ReplaceWithRegister : VimExtension {
       val savedRegister = caret.registerStorage.getRegister(lastRegisterChar) ?: return
 
       var usedType = savedRegister.type
-      var usedText = savedRegister.text
-      if (usedType.isLine && usedText?.endsWith('\n') == true) {
+      var usedText = savedRegister.text ?: ""
+      if (usedType.isLine && usedText.endsWith('\n')) {
         // Code from original plugin implementation. Correct text for linewise selected text
         usedText = usedText.dropLast(1)
         usedType = SelectionType.CHARACTER_WISE

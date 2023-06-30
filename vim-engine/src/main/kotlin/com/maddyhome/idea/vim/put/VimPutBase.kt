@@ -92,7 +92,7 @@ public abstract class VimPutBase : VimPut {
    * After using "p" or "P" in Visual mode the text that was put will be selected
    */
   private fun wrapInsertedTextWithVisualMarks(caret: VimCaret, data: PutData, text: ProcessedTextData) {
-    val textLength: Int = data.textData?.rawText?.length ?: return
+    val textLength: Int = data.textData?.text?.length ?: return
     val caretsAndSelections = data.visualSelection?.caretsAndSelections ?: return
     val selection = caretsAndSelections[caret] ?: caretsAndSelections.firstOrNull()?.value ?: return
 
@@ -120,7 +120,7 @@ public abstract class VimPutBase : VimPut {
   }
 
   private fun processText(caret: VimCaret?, data: PutData): ProcessedTextData? {
-    var text = data.textData?.rawText ?: run {
+    var text = data.textData?.text ?: run {
       if (caret == null) return null
       if (data.visualSelection != null) {
         val offset = caret.offset.point

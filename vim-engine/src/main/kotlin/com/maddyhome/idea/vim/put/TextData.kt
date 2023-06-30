@@ -11,7 +11,7 @@ package com.maddyhome.idea.vim.put
 import com.maddyhome.idea.vim.command.SelectionType
 
 public data class TextData(
-  val rawText: String?,
+  val text: String,
   val typeInRegister: SelectionType,
   val transferableData: List<Any>,
   val registerChar: Char?,
