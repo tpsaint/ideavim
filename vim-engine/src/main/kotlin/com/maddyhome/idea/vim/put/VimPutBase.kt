@@ -83,7 +83,7 @@ public abstract class VimPutBase : VimPut {
     }
   }
 
-  private fun wasTextInsertedLineWise(text: ProcessedTextData): Boolean {
+  private fun wasTextInsertedLineWise(text: TextData): Boolean {
     return text.typeInRegister == SelectionType.LINE_WISE
   }
 
@@ -91,7 +91,7 @@ public abstract class VimPutBase : VimPut {
    * see ":h gv":
    * After using "p" or "P" in Visual mode the text that was put will be selected
    */
-  private fun wrapInsertedTextWithVisualMarks(caret: VimCaret, data: PutData, text: ProcessedTextData) {
+  private fun wrapInsertedTextWithVisualMarks(caret: VimCaret, data: PutData, text: TextData) {
     val textLength: Int = data.textData?.text?.length ?: return
     val caretsAndSelections = data.visualSelection?.caretsAndSelections ?: return
     val selection = caretsAndSelections[caret] ?: caretsAndSelections.firstOrNull()?.value ?: return
@@ -119,7 +119,7 @@ public abstract class VimPutBase : VimPut {
       }
   }
 
-  private fun processText(caret: VimCaret?, data: PutData): ProcessedTextData? {
+  private fun processText(caret: VimCaret?, data: PutData): TextData? {
     var text = data.textData?.text ?: run {
       if (caret == null) return null
       if (data.visualSelection != null) {
@@ -139,7 +139,7 @@ public abstract class VimPutBase : VimPut {
         text.dropLast(1)
     }
 
-    return ProcessedTextData(
+    return TextData(
       text,
       data.textData.typeInRegister,
       data.textData.transferableData,
@@ -480,7 +480,7 @@ public abstract class VimPutBase : VimPut {
     data: PutData,
     additionalData: Map<String, Any>,
     context: ExecutionContext,
-    text: ProcessedTextData,
+    text: TextData,
   ): VimCaret {
     var updated = caret
     notifyAboutIdeaPut(editor)
@@ -531,7 +531,7 @@ public abstract class VimPutBase : VimPut {
   override fun putTextAndSetCaretPosition(
     editor: VimEditor,
     context: ExecutionContext,
-    text: ProcessedTextData,
+    text: TextData,
     data: PutData,
     additionalData: Map<String, Any>,
   ) {

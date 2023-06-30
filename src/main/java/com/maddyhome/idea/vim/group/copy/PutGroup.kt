@@ -44,7 +44,7 @@ import com.maddyhome.idea.vim.newapi.ij
 import com.maddyhome.idea.vim.newapi.vim
 import com.maddyhome.idea.vim.options.OptionConstants
 import com.maddyhome.idea.vim.options.helpers.ClipboardOptionHelper
-import com.maddyhome.idea.vim.put.ProcessedTextData
+import com.maddyhome.idea.vim.put.TextData
 import com.maddyhome.idea.vim.put.PutData
 import com.maddyhome.idea.vim.put.VimPasteProvider
 import com.maddyhome.idea.vim.put.VimPutBase
@@ -73,7 +73,7 @@ internal class PutGroup : VimPutBase() {
     pasteProvider: VimPasteProvider,
     vimEditor: VimEditor,
     vimContext: ExecutionContext,
-    text: ProcessedTextData,
+    text: TextData,
     subMode: VimStateMachine.SubMode,
     data: PutData,
     additionalData: Map<String, Any>,
@@ -158,7 +158,7 @@ internal class PutGroup : VimPutBase() {
    *   in the clipboard, instead of putting new text on top of stack, it merges the text into the last stack item.
    * So, all the other code in this function is created to detect such case and do not remove last clipboard item.
    */
-  private fun pasteKeepingClipboard(text: ProcessedTextData, doPaste: () -> Unit) {
+  private fun pasteKeepingClipboard(text: TextData, doPaste: () -> Unit) {
     val allContentsBefore = CopyPasteManager.getInstance().allContents
     val sizeBeforeInsert = allContentsBefore.size
     val firstItemBefore = allContentsBefore.firstOrNull()

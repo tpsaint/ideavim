@@ -25,7 +25,7 @@ public interface VimPut {
   public fun putTextAndSetCaretPosition(
     editor: VimEditor,
     context: ExecutionContext,
-    text: ProcessedTextData,
+    text: TextData,
     data: PutData,
     additionalData: Map<String, Any>,
   )
@@ -48,7 +48,7 @@ public interface VimPut {
     pasteProvider: VimPasteProvider,
     vimEditor: VimEditor,
     vimContext: ExecutionContext,
-    text: ProcessedTextData,
+    text: TextData,
     subMode: VimStateMachine.SubMode,
     data: PutData,
     additionalData: Map<String, Any>,
