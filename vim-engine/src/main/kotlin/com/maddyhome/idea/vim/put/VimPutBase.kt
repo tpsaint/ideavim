@@ -186,15 +186,13 @@ public abstract class VimPutBase : VimPut {
     }
   }
 
-  override fun doIndent(
+  public abstract fun doIndent(
     editor: VimEditor,
     caret: VimCaret,
     context: ExecutionContext,
     startOffset: Int,
     endOffset: Int,
-  ): Int {
-    TODO("Not yet implemented")
-  }
+  ): Int
 
   private fun putTextCharacterwise(
     editor: VimEditor,
@@ -474,7 +472,7 @@ public abstract class VimPutBase : VimPut {
   }
 
   @RWLockLabel.SelfSynchronized
-  private fun putForCaret(
+  protected open fun putForCaret(
     editor: VimEditor,
     caret: VimCaret,
     data: PutData,
@@ -483,7 +481,6 @@ public abstract class VimPutBase : VimPut {
     text: TextData,
   ): VimCaret {
     var updated = caret
-    notifyAboutIdeaPut(editor)
     if (data.visualSelection?.typeInEditor?.isLine == true && editor.isOneLineMode()) return updated
     val startOffsets = prepareDocumentAndGetStartOffsets(editor, updated, text.typeInRegister, data, additionalData)
 
@@ -528,7 +525,7 @@ public abstract class VimPutBase : VimPut {
   }
 
   @RWLockLabel.SelfSynchronized
-  override fun putTextAndSetCaretPosition(
+  public fun putTextAndSetCaretPosition(
     editor: VimEditor,
     context: ExecutionContext,
     text: TextData,
@@ -553,6 +550,23 @@ public abstract class VimPutBase : VimPut {
       myCarets.forEach { caret -> putForCaret(editor, caret, data, additionalData, context, text) }
     }
   }
+
+  @RWLockLabel.SelfSynchronized
+  public abstract fun putTextViaIde(
+    pasteProvider: VimPasteProvider,
+    vimEditor: VimEditor,
+    vimContext: ExecutionContext,
+    text: TextData,
+    subMode: VimStateMachine.SubMode,
+    data: PutData,
+    additionalData: Map<String, Any>,
+  )
+
+  public abstract fun getProviderForPasteViaIde(
+    editor: VimEditor,
+    typeInRegister: SelectionType,
+    data: PutData,
+  ): VimPasteProvider?
 
   public companion object {
     public val logger: VimLogger by lazy { vimLogger<VimPutBase>() }

@@ -29,14 +29,17 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.util.SystemInfo
 import com.maddyhome.idea.vim.VimPlugin
+import com.maddyhome.idea.vim.api.VimEditor
 import com.maddyhome.idea.vim.api.globalOptions
 import com.maddyhome.idea.vim.api.injector
 import com.maddyhome.idea.vim.helper.MessageHelper
 import com.maddyhome.idea.vim.key.ShortcutOwner
 import com.maddyhome.idea.vim.key.ShortcutOwnerInfo
 import com.maddyhome.idea.vim.newapi.globalIjOptions
+import com.maddyhome.idea.vim.newapi.ij
 import com.maddyhome.idea.vim.options.OptionConstants
 import com.maddyhome.idea.vim.options.OptionScope
+import com.maddyhome.idea.vim.options.helpers.ClipboardOptionHelper
 import com.maddyhome.idea.vim.statistic.ActionTracker
 import com.maddyhome.idea.vim.ui.VimEmulationConfigurable
 import com.maddyhome.idea.vim.vimscript.model.datatypes.VimInt
@@ -56,7 +59,8 @@ internal class NotificationService(private val project: Project?) {
   @Suppress("unused")
   constructor() : this(null)
 
-  fun notifyAboutIdeaPut() {
+
+  private fun notifyAboutIdeaPut() {
     val notification = Notification(
       IDEAVIM_NOTIFICATION_ID,
       IDEAVIM_NOTIFICATION_TITLE,
@@ -330,6 +334,19 @@ internal class NotificationService(private val project: Project?) {
         }
       })
       notification.notify(project)
+    }
+
+    fun notifyAboutIdeaPut(editor: VimEditor?) {
+      val project = editor?.ij?.project
+      if (VimPlugin.getVimState().isIdeaPutNotified || ClipboardOptionHelper.ideaputDisabled ||
+        injector.globalOptions().clipboard.contains(OptionConstants.clipboard_ideaput)
+      ) {
+        return
+      }
+
+      VimPlugin.getVimState().isIdeaPutNotified = true
+
+      VimPlugin.getNotifications(project).notifyAboutIdeaPut()
     }
   }
 }

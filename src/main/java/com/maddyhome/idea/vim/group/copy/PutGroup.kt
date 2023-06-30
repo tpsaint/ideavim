@@ -34,6 +34,7 @@ import com.maddyhome.idea.vim.command.isChar
 import com.maddyhome.idea.vim.command.isLine
 import com.maddyhome.idea.vim.common.TextRange
 import com.maddyhome.idea.vim.diagnostic.debug
+import com.maddyhome.idea.vim.group.NotificationService
 import com.maddyhome.idea.vim.helper.EditorHelper
 import com.maddyhome.idea.vim.helper.RWLockLabel
 import com.maddyhome.idea.vim.helper.moveToInlayAwareOffset
@@ -52,7 +53,6 @@ import com.maddyhome.idea.vim.register.RegisterConstants
 import java.awt.datatransfer.DataFlavor
 
 internal class PutGroup : VimPutBase() {
-
   override fun getProviderForPasteViaIde(
     editor: VimEditor,
     typeInRegister: SelectionType,
@@ -66,6 +66,18 @@ internal class PutGroup : VimPutBase() {
       if (provider != null && provider.isPasteEnabled(context)) return IjPasteProvider(provider)
     }
     return null
+  }
+
+  override fun putForCaret(
+    editor: VimEditor,
+    caret: VimCaret,
+    data: PutData,
+    additionalData: Map<String, Any>,
+    context: ExecutionContext,
+    text: TextData
+  ): VimCaret {
+    NotificationService.notifyAboutIdeaPut(editor)
+    return super.putForCaret(editor, caret, data, additionalData, context, text)
   }
 
   @RWLockLabel.SelfSynchronized
@@ -204,19 +216,6 @@ internal class PutGroup : VimPutBase() {
       TextRange(startLineOffset, endLineOffset),
     )
     return editor.getLineEndOffset(endLine, true)
-  }
-
-  override fun notifyAboutIdeaPut(editor: VimEditor?) {
-    val project = editor?.ij?.project
-    if (VimPlugin.getVimState().isIdeaPutNotified || ClipboardOptionHelper.ideaputDisabled ||
-      injector.globalOptions().clipboard.contains(OptionConstants.clipboard_ideaput)
-    ) {
-      return
-    }
-
-    VimPlugin.getVimState().isIdeaPutNotified = true
-
-    VimPlugin.getNotifications(project).notifyAboutIdeaPut()
   }
 }
 
