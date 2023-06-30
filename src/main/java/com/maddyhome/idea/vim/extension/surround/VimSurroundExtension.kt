@@ -188,7 +188,6 @@ internal class VimSurroundExtension : VimExtension {
             surrounding.caret to textData
           }.forEach {
             injector.put.putTextForCaret(
-              editor,
               it.first,
               context,
               it.second,

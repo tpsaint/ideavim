@@ -93,7 +93,6 @@ public data class MoveTextCommand(val ranges: Ranges, val argument: String) : Co
       false
     }
     injector.put.putTextForCaret(
-      editor,
       caret,
       context,
       textData,

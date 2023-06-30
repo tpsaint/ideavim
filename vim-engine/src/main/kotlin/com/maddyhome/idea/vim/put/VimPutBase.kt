@@ -534,7 +534,6 @@ public abstract class VimPutBase : VimPut {
 
   @RWLockLabel.SelfSynchronized
   override fun putTextForCaret(
-    editor: VimEditor,
     caret: VimCaret,
     context: ExecutionContext,
     textData: TextData?,
@@ -547,6 +546,7 @@ public abstract class VimPutBase : VimPut {
     updateVisualMarks: Boolean,
     modifyRegister: Boolean,
   ): RangeMarker? {
+    val editor = caret.editor
     val indent = getIndent(rawIndent, textData, visualSelection)
     val additionalData = collectPreModificationData(editor, visualSelection)
     visualSelection?.let {

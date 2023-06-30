@@ -51,7 +51,6 @@ public sealed class PutVisualTextBaseAction(
     injector.application.runWriteAction {
       caretToPutData.forEach {
         result = injector.put.putTextForCaret(
-          editor,
           it.key,
           context,
           it.value.first,

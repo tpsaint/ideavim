@@ -39,7 +39,6 @@ public sealed class PutTextBaseAction(
       injector.application.runWriteAction {
         caretToTextData.forEach {
           result = injector.put.putTextForCaret(
-            editor,
             it.key,
             context,
             it.value,
