@@ -43,9 +43,8 @@ import com.maddyhome.idea.vim.newapi.IjVimEditor
 import com.maddyhome.idea.vim.newapi.ij
 import com.maddyhome.idea.vim.newapi.vim
 import com.maddyhome.idea.vim.put.TextData
-import com.maddyhome.idea.vim.put.PutData
-import com.maddyhome.idea.vim.put.VimPut
 import com.maddyhome.idea.vim.put.VimPutBase
+import com.maddyhome.idea.vim.put.VisualSelection
 import com.maddyhome.idea.vim.register.RegisterConstants
 import java.awt.datatransfer.DataFlavor
 
@@ -53,11 +52,11 @@ internal class PutGroup : VimPutBase() {
   private fun getProviderForPasteViaIde(
     editor: VimEditor,
     typeInRegister: SelectionType,
-    data: PutData,
+    visualSelection: VisualSelection?,
+    count: Int,
   ): PasteProvider? {
-    val visualSelection = data.visualSelection
     if (visualSelection != null && visualSelection.typeInEditor.isBlock) return null
-    if ((typeInRegister.isLine || typeInRegister.isChar) && data.count == 1) {
+    if ((typeInRegister.isLine || typeInRegister.isChar) && count == 1) {
       val context = DataManager.getInstance().getDataContext(editor.ij.contentComponent)
       val provider = PlatformDataKeys.PASTE_PROVIDER.getData(context)
       if (provider != null && provider.isPasteEnabled(context)) return provider
@@ -68,13 +67,18 @@ internal class PutGroup : VimPutBase() {
   override fun putForCaret(
     editor: VimEditor,
     caret: VimCaret,
-    data: PutData,
+    visualSelection: VisualSelection?,
+    insertTextBeforeCaret: Boolean,
+    caretAfterInsertedText: Boolean,
+    indent: Boolean,
+    putToLine: Int,
+    count: Int,
     additionalData: Map<String, Any>,
     context: ExecutionContext,
     text: TextData
   ): Pair<VimCaret, com.maddyhome.idea.vim.put.RangeMarker>? {
     NotificationService.notifyAboutIdeaPut(editor)
-    return super.putForCaret(editor, caret, data, additionalData, context, text)
+    return super.putForCaret(editor, caret, visualSelection, insertTextBeforeCaret, caretAfterInsertedText, indent, putToLine, count, additionalData, context, text)
   }
 
   @RWLockLabel.SelfSynchronized
@@ -82,11 +86,16 @@ internal class PutGroup : VimPutBase() {
     vimEditor: VimEditor,
     vimContext: ExecutionContext,
     text: TextData,
+    visualSelection: VisualSelection?,
+    insertTextBeforeCaret: Boolean,
+    caretAfterInsertedText: Boolean,
+    indent: Boolean,
+    putToLine: Int,
+    count: Int,
     subMode: VimStateMachine.SubMode,
-    data: PutData,
     additionalData: Map<String, Any>,
   ): Map<VimCaret, com.maddyhome.idea.vim.put.RangeMarker>? {
-    val pasteProvider = getProviderForPasteViaIde(vimEditor, text.typeInRegister, data) ?: return null
+    val pasteProvider = getProviderForPasteViaIde(vimEditor, text.typeInRegister, visualSelection, count) ?: return null
 
     val editor = (vimEditor as IjVimEditor).editor
     val context = vimContext.context as DataContext
@@ -97,7 +106,9 @@ internal class PutGroup : VimPutBase() {
           vimEditor,
           IjVimCaret(caret),
           text.typeInRegister,
-          data,
+          visualSelection,
+          insertTextBeforeCaret,
+          putToLine,
           additionalData,
         ).first()
       val pointMarker = editor.document.createRangeMarker(startOffset, startOffset)
@@ -122,7 +133,7 @@ internal class PutGroup : VimPutBase() {
       if (!caret.isValid) return@forEach
 
       val caretPossibleEndOffset = lastPastedRegion?.endOffset ?: (startOffset + text.text.length)
-      val endOffset = if (data.indent) {
+      val endOffset = if (indent) {
         doIndent(
           vimEditor,
           IjVimCaret(caret),
@@ -143,7 +154,7 @@ internal class PutGroup : VimPutBase() {
         endOffset,
         text.typeInRegister,
         subMode,
-        data.caretAfterInsertedText,
+        caretAfterInsertedText,
       )
       caretsToPastedText[vimCaret] = createRangeMarker(vimEditor, startOffset, endOffset)
     }

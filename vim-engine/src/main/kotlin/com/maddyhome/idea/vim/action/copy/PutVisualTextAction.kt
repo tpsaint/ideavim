@@ -18,8 +18,8 @@ import com.maddyhome.idea.vim.command.OperatorArguments
 import com.maddyhome.idea.vim.group.visual.VimSelection
 import com.maddyhome.idea.vim.handler.VisualOperatorActionHandler
 import com.maddyhome.idea.vim.helper.enumSetOf
-import com.maddyhome.idea.vim.put.PutData
 import com.maddyhome.idea.vim.put.TextData
+import com.maddyhome.idea.vim.put.VisualSelection
 import java.util.*
 
 /**
@@ -50,13 +50,26 @@ public sealed class PutVisualTextBaseAction(
     var result = true
     injector.application.runWriteAction {
       caretToPutData.forEach {
-        result = injector.put.putTextForCaret(editor, it.key, context, it.value, true, modifyRegister) != null && result
+        result = injector.put.putTextForCaret(
+          editor,
+          it.key,
+          context,
+          it.value.first,
+          it.value.second,
+          insertTextBeforeCaret,
+          caretAfterInsertedText,
+          indent,
+          count,
+          putToLine = -1,
+          updateVisualMarks = true,
+          modifyRegister = modifyRegister,
+          ) != null && result
       }
     }
     return result
   }
 
-  private fun getPutDataForCaret(caret: VimCaret, selection: VimSelection?, count: Int): PutData {
+  private fun getPutDataForCaret(caret: VimCaret, selection: VimSelection?, count: Int): Pair<TextData?, VisualSelection?> {
     val lastRegisterChar = injector.registerGroup.lastRegisterChar
     val register = caret.registerStorage.getRegister(lastRegisterChar)
     val textData = register?.let {
@@ -67,8 +80,8 @@ public sealed class PutVisualTextBaseAction(
         register.name,
       )
     }
-    val visualSelection = selection?.let { PutData.VisualSelection(mapOf(caret to it), it.type) }
-    return PutData(textData, visualSelection, count, insertTextBeforeCaret, indent, caretAfterInsertedText)
+    val visualSelection = selection?.let { VisualSelection(mapOf(caret to it), it.type) }
+    return Pair(textData, visualSelection)
   }
 }
 

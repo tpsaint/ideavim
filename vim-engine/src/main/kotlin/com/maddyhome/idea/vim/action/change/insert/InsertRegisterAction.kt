@@ -17,7 +17,6 @@ import com.maddyhome.idea.vim.command.SelectionType
 import com.maddyhome.idea.vim.ex.ExException
 import com.maddyhome.idea.vim.handler.VimActionHandler
 import com.maddyhome.idea.vim.helper.RWLockLabel
-import com.maddyhome.idea.vim.put.PutData
 import com.maddyhome.idea.vim.put.TextData
 import com.maddyhome.idea.vim.register.Register
 import com.maddyhome.idea.vim.vimscript.model.Script
@@ -84,8 +83,20 @@ private fun insertRegister(
   if (register != null) {
     val text = register.rawText ?: injector.parser.toPrintableString(register.keys)
     val textData = TextData(text, SelectionType.CHARACTER_WISE, emptyList(), register.name)
-    val putData = PutData(textData, null, 1, insertTextBeforeCaret = true, rawIndent = true, caretAfterInsertedText = true)
-    injector.put.putText(editor, context, putData, operatorArguments = operatorArguments)
+    injector.put.putText(
+      editor,
+      context,
+      textData,
+      null, // (insert mode)
+      insertTextBeforeCaret = true,
+      caretAfterInsertedText = true,
+      rawIndent = true,
+      operatorArguments = operatorArguments,
+      1,
+      putToLine = -1,
+      updateVisualMarks = true, // any (insert mode)
+      modifyRegister = true, // any (insert mode)
+      )
     return true
   }
   return false

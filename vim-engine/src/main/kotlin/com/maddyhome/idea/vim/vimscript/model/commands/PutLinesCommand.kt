@@ -15,7 +15,6 @@ import com.maddyhome.idea.vim.api.injector
 import com.maddyhome.idea.vim.command.OperatorArguments
 import com.maddyhome.idea.vim.command.SelectionType
 import com.maddyhome.idea.vim.ex.ranges.Ranges
-import com.maddyhome.idea.vim.put.PutData
 import com.maddyhome.idea.vim.put.TextData
 import com.maddyhome.idea.vim.vimscript.model.ExecutionResult
 
@@ -48,15 +47,20 @@ public data class PutLinesCommand(val ranges: Ranges, val argument: String) : Co
         null,
       )
     }
-    val putData = PutData(
-      textData,
-      null,
-      1,
-      insertTextBeforeCaret = false,
-      rawIndent = false,
-      caretAfterInsertedText = false,
-      putToLine = line,
-    )
-    return if (injector.put.putText(editor, context, putData, operatorArguments = operatorArguments) != null) ExecutionResult.Success else ExecutionResult.Error
+    return if (
+      injector.put.putText(
+        editor,
+        context,
+        textData,
+        null, // no selection
+        insertTextBeforeCaret = false, // caret is not the insert location
+        caretAfterInsertedText = false,
+        rawIndent = false,
+        operatorArguments = operatorArguments,
+        1,
+        putToLine = line,
+        updateVisualMarks = false, // doesn't matter
+        modifyRegister = false, // doesn't matter
+      ) != null) ExecutionResult.Success else ExecutionResult.Error
   }
 }

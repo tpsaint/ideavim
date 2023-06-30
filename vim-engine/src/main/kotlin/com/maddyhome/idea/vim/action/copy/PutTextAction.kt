@@ -15,7 +15,6 @@ import com.maddyhome.idea.vim.command.Argument
 import com.maddyhome.idea.vim.command.Command
 import com.maddyhome.idea.vim.command.OperatorArguments
 import com.maddyhome.idea.vim.handler.ChangeEditorActionHandler
-import com.maddyhome.idea.vim.put.PutData
 import com.maddyhome.idea.vim.put.TextData
 
 public sealed class PutTextBaseAction(
@@ -33,22 +32,49 @@ public sealed class PutTextBaseAction(
   ): Boolean {
     val count = operatorArguments.count1
     val sortedCarets = editor.sortedCarets()
+    // todo this if is not needed
     return if (sortedCarets.size > 1) {
-      val caretToPutData = sortedCarets.associateWith { getPutDataForCaret(it, count) }
+      val caretToTextData = sortedCarets.associateWith { getTextDataForCaret(it) }
       var result = true
       injector.application.runWriteAction {
-        caretToPutData.forEach {
-          result = injector.put.putTextForCaret(editor, it.key, context, it.value) != null && result
+        caretToTextData.forEach {
+          result = injector.put.putTextForCaret(
+            editor,
+            it.key,
+            context,
+            it.value,
+            null,
+            insertTextBeforeCaret,
+            caretAfterInsertedText,
+            indent,
+            count,
+            putToLine = -1,
+            updateVisualMarks = false, // doesn't matter
+            modifyRegister = false, // doesn't matter
+            ) != null && result
         }
       }
       result
     } else {
-      val putData = getPutDataForCaret(sortedCarets.single(), count)
-      injector.put.putText(editor, context, putData, operatorArguments) != null
+      val textData = getTextDataForCaret(sortedCarets.single())
+      injector.put.putText(
+        editor,
+        context,
+        textData,
+        null,
+        insertTextBeforeCaret,
+        caretAfterInsertedText,
+        indent,
+        operatorArguments,
+        count,
+        putToLine = -1,
+        updateVisualMarks = false, // any (normal mode)
+        modifyRegister = true, // any (normal mode)
+        ) != null
     }
   }
 
-  private fun getPutDataForCaret(caret: ImmutableVimCaret, count: Int): PutData {
+  private fun getTextDataForCaret(caret: ImmutableVimCaret): TextData? {
     val registerService = injector.registerGroup
     val registerChar = if (caret.editor.carets().size == 1) {
       registerService.currentRegister
@@ -64,7 +90,7 @@ public sealed class PutTextBaseAction(
         register.name,
       )
     }
-    return PutData(textData, null, count, insertTextBeforeCaret, indent, caretAfterInsertedText, -1)
+    return textData
   }
 }
 

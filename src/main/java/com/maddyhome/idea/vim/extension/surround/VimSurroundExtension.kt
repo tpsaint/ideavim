@@ -37,7 +37,6 @@ import com.maddyhome.idea.vim.helper.subMode
 import com.maddyhome.idea.vim.key.OperatorFunction
 import com.maddyhome.idea.vim.newapi.ij
 import com.maddyhome.idea.vim.options.helpers.ClipboardOptionHelper
-import com.maddyhome.idea.vim.put.PutData
 import com.maddyhome.idea.vim.put.TextData
 import org.jetbrains.annotations.NonNls
 import java.awt.event.KeyEvent
@@ -186,11 +185,22 @@ internal class VimSurroundExtension : VimExtension {
             val innerValue = injector.parser.toPrintableString(surrounding.innerText!!)
             val text = newSurround?.let { it.first + innerValue + it.second } ?: innerValue
             val textData = TextData(text, SelectionType.CHARACTER_WISE, emptyList(), null)
-            val putData = PutData(textData, null, 1, insertTextBeforeCaret = true, rawIndent = true, caretAfterInsertedText = false)
-
-            surrounding.caret to putData
+            surrounding.caret to textData
           }.forEach {
-            injector.put.putTextForCaret(editor, it.first, context, it.second)
+            injector.put.putTextForCaret(
+              editor,
+              it.first,
+              context,
+              it.second,
+              null, // no selection
+              insertTextBeforeCaret = true,
+              caretAfterInsertedText = false,
+              rawIndent = true,
+              count = 1,
+              putToLine = -1,
+              updateVisualMarks = false,
+              modifyRegister = false,
+              )
           }
 
         surroundings.forEach {

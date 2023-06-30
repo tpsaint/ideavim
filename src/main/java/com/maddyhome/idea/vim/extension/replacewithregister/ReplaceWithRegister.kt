@@ -38,8 +38,8 @@ import com.maddyhome.idea.vim.newapi.IjVimEditor
 import com.maddyhome.idea.vim.newapi.ij
 import com.maddyhome.idea.vim.newapi.vim
 import com.maddyhome.idea.vim.options.helpers.ClipboardOptionHelper
-import com.maddyhome.idea.vim.put.PutData
 import com.maddyhome.idea.vim.put.TextData
+import com.maddyhome.idea.vim.put.VisualSelection
 import org.jetbrains.annotations.NonNls
 
 internal class ReplaceWithRegister : VimExtension {
@@ -64,7 +64,7 @@ internal class ReplaceWithRegister : VimExtension {
         val selectionEnd = caret.selectionEnd
 
         val visualSelection = caret to VimSelection.create(selectionStart, selectionEnd - 1, typeInEditor, editor)
-        doReplace(editor.ij, caret, PutData.VisualSelection(mapOf(visualSelection), typeInEditor))
+        doReplace(editor.ij, caret, VisualSelection(mapOf(visualSelection), typeInEditor))
       }
       editor.exitVisualMode()
     }
@@ -92,7 +92,7 @@ internal class ReplaceWithRegister : VimExtension {
         val visualSelection = caret to VimSelection.create(lineStart, lineEnd, SelectionType.LINE_WISE, editor)
         caretsAndSelections += visualSelection
 
-        doReplace(editor.ij, caret, PutData.VisualSelection(mapOf(visualSelection), SelectionType.LINE_WISE))
+        doReplace(editor.ij, caret, VisualSelection(mapOf(visualSelection), SelectionType.LINE_WISE))
       }
 
       editor.sortedCarets().forEach { caret ->
@@ -108,7 +108,7 @@ internal class ReplaceWithRegister : VimExtension {
     override fun apply(editor: VimEditor, context: ExecutionContext, selectionType: SelectionType): Boolean {
       val ijEditor = (editor as IjVimEditor).editor
       val range = getRange(ijEditor) ?: return false
-      val visualSelection = PutData.VisualSelection(
+      val visualSelection = VisualSelection(
         mapOf(
           editor.primaryCaret() to VimSelection.create(
             range.startOffset,
@@ -142,7 +142,7 @@ internal class ReplaceWithRegister : VimExtension {
     @NonNls
     private const val RWR_VISUAL = "<Plug>ReplaceWithRegisterVisual"
 
-    private fun doReplace(editor: Editor, caret: ImmutableVimCaret, visualSelection: PutData.VisualSelection) {
+    private fun doReplace(editor: Editor, caret: ImmutableVimCaret, visualSelection: VisualSelection) {
       val registerGroup = injector.registerGroup
       val lastRegisterChar = if (editor.caretModel.caretCount == 1) registerGroup.currentRegister else registerGroup.getCurrentRegisterForMulticaret()
       val savedRegister = caret.registerStorage.getRegister(lastRegisterChar) ?: return
@@ -157,27 +157,25 @@ internal class ReplaceWithRegister : VimExtension {
 
       val textData = TextData(usedText, usedType, savedRegister.transferableData, savedRegister.name)
 
-      val putData = PutData(
-        textData,
-        visualSelection,
-        1,
-        insertTextBeforeCaret = true,
-        rawIndent = true,
-        caretAfterInsertedText = false,
-        putToLine = -1,
-      )
       ClipboardOptionHelper.IdeaputDisabler().use {
         VimPlugin.getPut().putText(
           IjVimEditor(editor),
           injector.executionContextManager.onEditor(editor.vim),
-          putData,
+          textData,
+          visualSelection,
+          insertTextBeforeCaret = true,
+          caretAfterInsertedText = false,
+          rawIndent = true,
           operatorArguments = OperatorArguments(
             editor.vimStateMachine?.isOperatorPending ?: false,
             0,
             editor.editorMode,
             editor.subMode,
           ),
-          saveToRegister = false
+          count = 1,
+          putToLine = -1,
+          updateVisualMarks = true,
+          modifyRegister = false
         )
       }
     }

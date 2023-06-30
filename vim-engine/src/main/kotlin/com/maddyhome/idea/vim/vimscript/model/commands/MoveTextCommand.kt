@@ -28,7 +28,6 @@ import com.maddyhome.idea.vim.ex.ranges.Ranges
 import com.maddyhome.idea.vim.helper.Msg
 import com.maddyhome.idea.vim.mark.Mark
 import com.maddyhome.idea.vim.mark.VimMark
-import com.maddyhome.idea.vim.put.PutData
 import com.maddyhome.idea.vim.put.TextData
 import com.maddyhome.idea.vim.vimscript.model.ExecutionResult
 import kotlin.math.min
@@ -86,13 +85,27 @@ public data class MoveTextCommand(val ranges: Ranges, val argument: String) : Co
       (lineRange.endLine == editor.lineCount() - 1)
 
     editor.deleteString(range)
-    val putData = if (line == -1) {
+    val insertTextBeforeCaret: Boolean
+    insertTextBeforeCaret = if (line == -1) {
       caret.moveToOffset(0)
-      PutData(textData, null, 1, insertTextBeforeCaret = true, rawIndent = true, caretAfterInsertedText = false)
+      true
     } else {
-      PutData(textData, null, 1, insertTextBeforeCaret = false, rawIndent = true, caretAfterInsertedText = false, putToLine = line)
+      false
     }
-    injector.put.putTextForCaret(editor, caret, context, putData)
+    injector.put.putTextForCaret(
+      editor,
+      caret,
+      context,
+      textData,
+      null,
+      insertTextBeforeCaret,
+      caretAfterInsertedText = false,
+      rawIndent = true,
+      count = 1,
+      putToLine = line,
+      updateVisualMarks = false, // doesn't matter
+      modifyRegister = false, // doesn't matter
+    )
 
     if (dropNewLineInEnd) {
       assert(editor.text().last() == '\n')
