@@ -20,6 +20,7 @@ import com.maddyhome.idea.vim.api.getText
 import com.maddyhome.idea.vim.api.injector
 import com.maddyhome.idea.vim.command.OperatorArguments
 import com.maddyhome.idea.vim.command.SelectionType
+import com.maddyhome.idea.vim.common.Direction
 import com.maddyhome.idea.vim.common.TextRange
 import com.maddyhome.idea.vim.ex.ExException
 import com.maddyhome.idea.vim.ex.InvalidRangeException
@@ -28,7 +29,9 @@ import com.maddyhome.idea.vim.ex.ranges.Ranges
 import com.maddyhome.idea.vim.helper.Msg
 import com.maddyhome.idea.vim.mark.Mark
 import com.maddyhome.idea.vim.mark.VimMark
+import com.maddyhome.idea.vim.put.AtCaretPasteOptions
 import com.maddyhome.idea.vim.put.TextData
+import com.maddyhome.idea.vim.put.ToLinePasteOptions
 import com.maddyhome.idea.vim.vimscript.model.ExecutionResult
 import kotlin.math.min
 
@@ -85,22 +88,19 @@ public data class MoveTextCommand(val ranges: Ranges, val argument: String) : Co
       (lineRange.endLine == editor.lineCount() - 1)
 
     editor.deleteString(range)
-    val insertTextBeforeCaret: Boolean
-    insertTextBeforeCaret = if (line == -1) {
+    val pasteOptions = if (line == -1) {
       caret.moveToOffset(0)
-      true
+      AtCaretPasteOptions(Direction.BACKWARDS)
     } else {
-      false
+      ToLinePasteOptions(line)
     }
+    
     injector.put.putTextForCaretNonVisual(
       caret,
       context,
       textData,
-      insertTextBeforeCaret,
+      pasteOptions,
       caretAfterInsertedText = false,
-      rawIndent = true,
-      count = 1,
-      putToLine = line,
     )
 
     if (dropNewLineInEnd) {

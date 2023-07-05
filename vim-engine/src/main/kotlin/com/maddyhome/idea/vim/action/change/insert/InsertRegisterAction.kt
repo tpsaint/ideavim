@@ -14,11 +14,12 @@ import com.maddyhome.idea.vim.command.Argument
 import com.maddyhome.idea.vim.command.Command
 import com.maddyhome.idea.vim.command.OperatorArguments
 import com.maddyhome.idea.vim.command.SelectionType
+import com.maddyhome.idea.vim.common.Direction
 import com.maddyhome.idea.vim.ex.ExException
 import com.maddyhome.idea.vim.handler.VimActionHandler
 import com.maddyhome.idea.vim.helper.RWLockLabel
+import com.maddyhome.idea.vim.put.AtCaretPasteOptions
 import com.maddyhome.idea.vim.put.TextData
-import com.maddyhome.idea.vim.register.Register
 import com.maddyhome.idea.vim.vimscript.model.Script
 
 public class InsertRegisterAction : VimActionHandler.SingleExecution() {
@@ -46,7 +47,7 @@ public class InsertRegisterAction : VimActionHandler.SingleExecution() {
               val textToStore = expressionValue.toInsertableString()
               injector.registerGroup.storeTextSpecial('=', textToStore)
             }
-            insertRegister(editor, context, argument.character, operatorArguments)
+            insertRegister(editor, context, argument.character)
           }
         } catch (e: ExException) {
           injector.messages.indicateError()
@@ -55,7 +56,7 @@ public class InsertRegisterAction : VimActionHandler.SingleExecution() {
       }
       return true
     } else {
-      return argument != null && insertRegister(editor, context, argument.character, operatorArguments)
+      return argument != null && insertRegister(editor, context, argument.character)
     }
   }
 
@@ -77,27 +78,22 @@ private fun insertRegister(
   editor: VimEditor,
   context: ExecutionContext,
   key: Char,
-  operatorArguments: OperatorArguments,
 ): Boolean {
-  val register: Register? = injector.registerGroup.getRegister(key)
-  if (register != null) {
-    val text = register.rawText ?: injector.parser.toPrintableString(register.keys)
-    val textData = TextData(text, SelectionType.CHARACTER_WISE, emptyList(), register.name)
-    injector.put.putText(
-      editor,
-      context,
-      textData,
-      null, // (insert mode)
-      insertTextBeforeCaret = true,
-      caretAfterInsertedText = true,
-      rawIndent = true,
-      operatorArguments = operatorArguments,
-      1,
-      putToLine = -1,
-      updateVisualMarks = true, // any (insert mode)
-      modifyRegister = true, // any (insert mode)
+  try {
+    editor.forEachCaret {
+      val register = it.registerStorage.getRegister(key) ?: throw ExException("Met caret with empty $key register")
+      val text = register.rawText ?: injector.parser.toPrintableString(register.keys)
+      val textData = TextData(text, SelectionType.CHARACTER_WISE, emptyList(), register.name)
+      injector.put.putTextForCaretNonVisual(
+        it,
+        context,
+        textData,
+        AtCaretPasteOptions(Direction.BACKWARDS),
+        caretAfterInsertedText = true,
       )
-    return true
+    }
+  } catch (e: ExException) {
+    return false
   }
-  return false
+  return true
 }

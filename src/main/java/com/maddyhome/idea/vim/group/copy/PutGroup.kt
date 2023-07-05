@@ -14,6 +14,7 @@ import com.intellij.ide.DataManager
 import com.intellij.ide.PasteProvider
 import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.PlatformDataKeys
+import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.editor.Caret
 import com.intellij.openapi.editor.RangeMarker
 import com.intellij.openapi.editor.ex.EditorEx
@@ -31,6 +32,7 @@ import com.maddyhome.idea.vim.command.VimStateMachine
 import com.maddyhome.idea.vim.command.isBlock
 import com.maddyhome.idea.vim.command.isChar
 import com.maddyhome.idea.vim.command.isLine
+import com.maddyhome.idea.vim.common.Direction
 import com.maddyhome.idea.vim.common.TextRange
 import com.maddyhome.idea.vim.diagnostic.debug
 import com.maddyhome.idea.vim.group.NotificationService
@@ -42,7 +44,10 @@ import com.maddyhome.idea.vim.newapi.IjVimCaret
 import com.maddyhome.idea.vim.newapi.IjVimEditor
 import com.maddyhome.idea.vim.newapi.ij
 import com.maddyhome.idea.vim.newapi.vim
+import com.maddyhome.idea.vim.put.AtCaretPasteOptions
+import com.maddyhome.idea.vim.put.PasteOptions
 import com.maddyhome.idea.vim.put.TextData
+import com.maddyhome.idea.vim.put.ToLinePasteOptions
 import com.maddyhome.idea.vim.put.VimPutBase
 import com.maddyhome.idea.vim.put.VisualSelection
 import com.maddyhome.idea.vim.register.RegisterConstants
@@ -68,17 +73,19 @@ internal class PutGroup : VimPutBase() {
     editor: VimEditor,
     caret: VimCaret,
     visualSelection: VisualSelection?,
-    insertTextBeforeCaret: Boolean,
+    pasteOptions: PasteOptions,
     caretAfterInsertedText: Boolean,
     indent: Boolean,
-    putToLine: Int,
-    count: Int,
     additionalData: Map<String, Any>,
     context: ExecutionContext,
     text: TextData
   ): Pair<VimCaret, com.maddyhome.idea.vim.put.RangeMarker>? {
     NotificationService.notifyAboutIdeaPut(editor)
-    return super.putForCaret(editor, caret, visualSelection, insertTextBeforeCaret, caretAfterInsertedText, indent, putToLine, count, additionalData, context, text)
+    var result: Pair<VimCaret, com.maddyhome.idea.vim.put.RangeMarker>? = null
+    runWriteAction {
+      result = super.putForCaret(editor, caret, visualSelection, pasteOptions, caretAfterInsertedText, indent, additionalData, context, text)
+    }
+    return result
   }
 
   @RWLockLabel.SelfSynchronized
@@ -101,14 +108,20 @@ internal class PutGroup : VimPutBase() {
     val context = vimContext.context as DataContext
     val carets: MutableMap<Caret, RangeMarker> = mutableMapOf()
     EditorHelper.getOrderedCaretsList(editor).forEach { caret ->
+      // todo refactor me
+      val pasteOptions = if (putToLine == -1) {
+        AtCaretPasteOptions(if (insertTextBeforeCaret) Direction.BACKWARDS else Direction.FORWARDS, true, count)
+      } else {
+        ToLinePasteOptions(putToLine, true, count)
+      }
+      
       val startOffset =
         prepareDocumentAndGetStartOffsets(
           vimEditor,
           IjVimCaret(caret),
           text.typeInRegister,
           visualSelection,
-          insertTextBeforeCaret,
-          putToLine,
+          pasteOptions,
           additionalData,
         ).first()
       val pointMarker = editor.document.createRangeMarker(startOffset, startOffset)

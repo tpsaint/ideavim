@@ -21,6 +21,7 @@ import com.maddyhome.idea.vim.command.MappingMode
 import com.maddyhome.idea.vim.command.OperatorArguments
 import com.maddyhome.idea.vim.command.SelectionType
 import com.maddyhome.idea.vim.command.VimStateMachine
+import com.maddyhome.idea.vim.common.Direction
 import com.maddyhome.idea.vim.common.TextRange
 import com.maddyhome.idea.vim.extension.ExtensionHandler
 import com.maddyhome.idea.vim.extension.VimExtension
@@ -37,6 +38,7 @@ import com.maddyhome.idea.vim.helper.subMode
 import com.maddyhome.idea.vim.key.OperatorFunction
 import com.maddyhome.idea.vim.newapi.ij
 import com.maddyhome.idea.vim.options.helpers.ClipboardOptionHelper
+import com.maddyhome.idea.vim.put.AtCaretPasteOptions
 import com.maddyhome.idea.vim.put.TextData
 import org.jetbrains.annotations.NonNls
 import java.awt.event.KeyEvent
@@ -191,11 +193,8 @@ internal class VimSurroundExtension : VimExtension {
               it.first,
               context,
               it.second,
-              insertTextBeforeCaret = true,
+              AtCaretPasteOptions(Direction.BACKWARDS),
               caretAfterInsertedText = false,
-              rawIndent = true,
-              count = 1,
-              putToLine = -1,
               )
           }
 

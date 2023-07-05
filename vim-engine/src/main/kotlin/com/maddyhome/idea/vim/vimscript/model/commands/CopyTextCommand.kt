@@ -18,6 +18,7 @@ import com.maddyhome.idea.vim.command.SelectionType
 import com.maddyhome.idea.vim.ex.ExException
 import com.maddyhome.idea.vim.ex.ranges.Ranges
 import com.maddyhome.idea.vim.put.TextData
+import com.maddyhome.idea.vim.put.ToLinePasteOptions
 import com.maddyhome.idea.vim.vimscript.model.ExecutionResult
 
 /**
@@ -42,11 +43,8 @@ public data class CopyTextCommand(val ranges: Ranges, val argument: String) : Co
         caret,
         context,
         textData,
-        insertTextBeforeCaret = false,
+        ToLinePasteOptions(line),
         caretAfterInsertedText = false,
-        rawIndent = true,
-        count = 1,
-        putToLine = line,
         )
     }
     return ExecutionResult.Success

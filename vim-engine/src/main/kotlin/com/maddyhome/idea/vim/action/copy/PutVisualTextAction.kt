@@ -15,9 +15,11 @@ import com.maddyhome.idea.vim.api.injector
 import com.maddyhome.idea.vim.command.Command
 import com.maddyhome.idea.vim.command.CommandFlags
 import com.maddyhome.idea.vim.command.OperatorArguments
+import com.maddyhome.idea.vim.common.Direction
 import com.maddyhome.idea.vim.group.visual.VimSelection
 import com.maddyhome.idea.vim.handler.VisualOperatorActionHandler
 import com.maddyhome.idea.vim.helper.enumSetOf
+import com.maddyhome.idea.vim.put.AtCaretPasteOptions
 import com.maddyhome.idea.vim.put.TextData
 import com.maddyhome.idea.vim.put.VisualSelection
 import java.util.*
@@ -26,7 +28,7 @@ import java.util.*
  * @author vlan
  */
 public sealed class PutVisualTextBaseAction(
-  private val insertTextBeforeCaret: Boolean,
+  private val direction: Direction,
   private val indent: Boolean,
   private val caretAfterInsertedText: Boolean,
   private val modifyRegister: Boolean = true,
@@ -55,11 +57,8 @@ public sealed class PutVisualTextBaseAction(
           context,
           it.value.first,
           it.value.second,
-          insertTextBeforeCaret,
+          AtCaretPasteOptions(direction, indent, count),
           caretAfterInsertedText,
-          indent,
-          count,
-          putToLine = -1,
           updateVisualMarks = true,
           modifyRegister = modifyRegister,
           ) != null && result
@@ -84,11 +83,11 @@ public sealed class PutVisualTextBaseAction(
   }
 }
 
-public class PutVisualTextBeforeCursorAction : PutVisualTextBaseAction(insertTextBeforeCaret = true, indent = true, caretAfterInsertedText = false, modifyRegister = false)
-public class PutVisualTextAfterCursorAction : PutVisualTextBaseAction(insertTextBeforeCaret = false, indent = true, caretAfterInsertedText = false)
+public class PutVisualTextBeforeCursorAction : PutVisualTextBaseAction(Direction.BACKWARDS, indent = true, caretAfterInsertedText = false, modifyRegister = false)
+public class PutVisualTextAfterCursorAction : PutVisualTextBaseAction(Direction.FORWARDS, indent = true, caretAfterInsertedText = false)
 
-public class PutVisualTextBeforeCursorNoIndentAction : PutVisualTextBaseAction(insertTextBeforeCaret = true, indent = false, caretAfterInsertedText = false)
-public class PutVisualTextAfterCursorNoIndentAction : PutVisualTextBaseAction(insertTextBeforeCaret = false, indent = false, caretAfterInsertedText = false)
+public class PutVisualTextBeforeCursorNoIndentAction : PutVisualTextBaseAction(Direction.BACKWARDS, indent = false, caretAfterInsertedText = false)
+public class PutVisualTextAfterCursorNoIndentAction : PutVisualTextBaseAction(Direction.FORWARDS, indent = false, caretAfterInsertedText = false)
 
-public class PutVisualTextBeforeCursorMoveCursorAction : PutVisualTextBaseAction(insertTextBeforeCaret = true, indent = true, caretAfterInsertedText = true)
-public class PutVisualTextAfterCursorMoveCursorAction : PutVisualTextBaseAction(insertTextBeforeCaret = false, indent = true, caretAfterInsertedText = true)
+public class PutVisualTextBeforeCursorMoveCursorAction : PutVisualTextBaseAction(Direction.BACKWARDS, indent = true, caretAfterInsertedText = true)
+public class PutVisualTextAfterCursorMoveCursorAction : PutVisualTextBaseAction(Direction.FORWARDS, indent = true, caretAfterInsertedText = true)

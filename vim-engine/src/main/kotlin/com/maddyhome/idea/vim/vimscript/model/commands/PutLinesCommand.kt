@@ -14,14 +14,18 @@ import com.maddyhome.idea.vim.api.VimEditor
 import com.maddyhome.idea.vim.api.injector
 import com.maddyhome.idea.vim.command.OperatorArguments
 import com.maddyhome.idea.vim.command.SelectionType
+import com.maddyhome.idea.vim.ex.ExException
 import com.maddyhome.idea.vim.ex.ranges.Ranges
+import com.maddyhome.idea.vim.put.RangeMarker
 import com.maddyhome.idea.vim.put.TextData
+import com.maddyhome.idea.vim.put.ToLinePasteOptions
 import com.maddyhome.idea.vim.vimscript.model.ExecutionResult
 
 /**
  * see "h :put"
  */
 @ExCommand(command = "pu[t]")
+// TODO make it support multiple carets
 public data class PutLinesCommand(val ranges: Ranges, val argument: String) : Command.SingleExecution(ranges, argument) {
   override val argFlags: CommandHandlerFlags = flags(RangeFlag.RANGE_OPTIONAL, ArgumentFlag.ARGUMENT_OPTIONAL, Access.READ_ONLY)
 
@@ -47,20 +51,19 @@ public data class PutLinesCommand(val ranges: Ranges, val argument: String) : Co
         null,
       )
     }
-    return if (
-      injector.put.putText(
-        editor,
-        context,
-        textData,
-        null, // no selection
-        insertTextBeforeCaret = false, // caret is not the insert location
-        caretAfterInsertedText = false,
-        rawIndent = false,
-        operatorArguments = operatorArguments,
-        1,
-        putToLine = line,
-        updateVisualMarks = false, // doesn't matter
-        modifyRegister = false, // doesn't matter
-      ) != null) ExecutionResult.Success else ExecutionResult.Error
+    try {
+      editor.forEachCaret {
+        injector.put.putTextForCaretNonVisual(
+          editor.primaryCaret(),
+          context,
+          textData,
+          ToLinePasteOptions(line, rawIndent = false),
+          caretAfterInsertedText = false,
+        ) ?: throw ExException("Failed to put line")
+      }
+    } catch (e: ExException) {
+      return ExecutionResult.Error
+    }
+    return ExecutionResult.Success
   }
 }

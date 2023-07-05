@@ -14,11 +14,13 @@ import com.maddyhome.idea.vim.api.injector
 import com.maddyhome.idea.vim.command.Argument
 import com.maddyhome.idea.vim.command.Command
 import com.maddyhome.idea.vim.command.OperatorArguments
+import com.maddyhome.idea.vim.common.Direction
 import com.maddyhome.idea.vim.handler.ChangeEditorActionHandler
+import com.maddyhome.idea.vim.put.AtCaretPasteOptions
 import com.maddyhome.idea.vim.put.TextData
 
 public sealed class PutTextBaseAction(
-  private val insertTextBeforeCaret: Boolean,
+  private val direction: Direction,
   private val indent: Boolean,
   private val caretAfterInsertedText: Boolean,
 ) : ChangeEditorActionHandler.SingleExecution() {
@@ -33,41 +35,20 @@ public sealed class PutTextBaseAction(
     val count = operatorArguments.count1
     val sortedCarets = editor.sortedCarets()
     // todo this if is not needed
-    return if (sortedCarets.size > 1) {
-      val caretToTextData = sortedCarets.associateWith { getTextDataForCaret(it) }
-      var result = true
-      injector.application.runWriteAction {
-        caretToTextData.forEach {
-          result = injector.put.putTextForCaretNonVisual(
-            it.key,
-            context,
-            it.value,
-            insertTextBeforeCaret,
-            caretAfterInsertedText,
-            indent,
-            count,
-            putToLine = -1,
-            ) != null && result
-        }
+    val caretToTextData = sortedCarets.associateWith { getTextDataForCaret(it) }
+    var result = true
+    injector.application.runWriteAction {
+      caretToTextData.forEach {
+        result = injector.put.putTextForCaretNonVisual(
+          it.key,
+          context,
+          it.value,
+          AtCaretPasteOptions(direction, indent, count),
+          caretAfterInsertedText,
+        ) != null && result
       }
-      result
-    } else {
-      val textData = getTextDataForCaret(sortedCarets.single())
-      injector.put.putText(
-        editor,
-        context,
-        textData,
-        null,
-        insertTextBeforeCaret,
-        caretAfterInsertedText,
-        indent,
-        operatorArguments,
-        count,
-        putToLine = -1,
-        updateVisualMarks = false, // any (normal mode)
-        modifyRegister = true, // any (normal mode)
-        ) != null
     }
+    return result
   }
 
   private fun getTextDataForCaret(caret: ImmutableVimCaret): TextData? {
@@ -90,11 +71,11 @@ public sealed class PutTextBaseAction(
   }
 }
 
-public class PutTextAfterCursorAction : PutTextBaseAction(insertTextBeforeCaret = false, indent = true, caretAfterInsertedText = false)
-public class PutTextAfterCursorActionMoveCursor : PutTextBaseAction(insertTextBeforeCaret = false, indent = true, caretAfterInsertedText = true)
+public class PutTextAfterCursorAction : PutTextBaseAction(Direction.FORWARDS, indent = true, caretAfterInsertedText = false)
+public class PutTextAfterCursorActionMoveCursor : PutTextBaseAction(Direction.FORWARDS, indent = true, caretAfterInsertedText = true)
 
-public class PutTextAfterCursorNoIndentAction : PutTextBaseAction(insertTextBeforeCaret = false, indent = false, caretAfterInsertedText = false)
-public class PutTextBeforeCursorNoIndentAction : PutTextBaseAction(insertTextBeforeCaret = true, indent = false, caretAfterInsertedText = false)
+public class PutTextAfterCursorNoIndentAction : PutTextBaseAction(Direction.FORWARDS, indent = false, caretAfterInsertedText = false)
+public class PutTextBeforeCursorNoIndentAction : PutTextBaseAction(Direction.BACKWARDS, indent = false, caretAfterInsertedText = false)
 
-public class PutTextBeforeCursorAction : PutTextBaseAction(insertTextBeforeCaret = true, indent = true, caretAfterInsertedText = false)
-public class PutTextBeforeCursorActionMoveCursor : PutTextBaseAction(insertTextBeforeCaret = true, indent = true, caretAfterInsertedText = true)
+public class PutTextBeforeCursorAction : PutTextBaseAction(Direction.BACKWARDS, indent = true, caretAfterInsertedText = false)
+public class PutTextBeforeCursorActionMoveCursor : PutTextBaseAction(Direction.BACKWARDS, indent = true, caretAfterInsertedText = true)

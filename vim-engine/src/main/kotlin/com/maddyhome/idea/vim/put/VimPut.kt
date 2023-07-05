@@ -10,38 +10,19 @@ package com.maddyhome.idea.vim.put
 
 import com.maddyhome.idea.vim.api.ExecutionContext
 import com.maddyhome.idea.vim.api.VimCaret
-import com.maddyhome.idea.vim.api.VimEditor
-import com.maddyhome.idea.vim.command.OperatorArguments
+import com.maddyhome.idea.vim.command.SelectionType
+import com.maddyhome.idea.vim.common.Direction
 import com.maddyhome.idea.vim.common.TextRange
 import com.maddyhome.idea.vim.helper.RWLockLabel
 
 public interface VimPut {
   @RWLockLabel.SelfSynchronized
-  public fun putText(
-    editor: VimEditor,
-    context: ExecutionContext,
-    textData: TextData?,
-    visualSelection: VisualSelection?,
-    insertTextBeforeCaret: Boolean,
-    caretAfterInsertedText: Boolean,
-    rawIndent: Boolean,
-    operatorArguments: OperatorArguments,
-    count: Int,
-    putToLine: Int = -1,
-    updateVisualMarks: Boolean = false,
-    modifyRegister: Boolean = true,
-  ): Map<VimCaret, RangeMarker>?
-
-  @RWLockLabel.SelfSynchronized
   public fun putTextForCaretNonVisual(
     caret: VimCaret,
     context: ExecutionContext,
     textData: TextData?,
-    insertTextBeforeCaret: Boolean,
+    pasteOptions: PasteOptions,
     caretAfterInsertedText: Boolean,
-    rawIndent: Boolean,
-    count: Int,
-    putToLine: Int = -1,
   ): RangeMarker?
 
   @RWLockLabel.SelfSynchronized
@@ -50,11 +31,8 @@ public interface VimPut {
     context: ExecutionContext,
     textData: TextData?,
     visualSelection: VisualSelection?,
-    insertTextBeforeCaret: Boolean,
+    pasteOptions: PasteOptions,
     caretAfterInsertedText: Boolean,
-    rawIndent: Boolean,
-    count: Int,
-    putToLine: Int = -1,
     updateVisualMarks: Boolean,
     modifyRegister: Boolean,
   ): RangeMarker?
@@ -63,3 +41,14 @@ public interface VimPut {
 public interface RangeMarker {
   public val range: TextRange
 }
+
+/**
+ * @param adjustIndent - see :h ]p
+ */
+public sealed class PasteOptions(private val rawIndent: Boolean, public val count: Int) {
+  public fun getIndent(textData: TextData?, visualSelection: VisualSelection?): Boolean {
+    return if (rawIndent && textData?.typeInRegister != SelectionType.LINE_WISE && visualSelection?.typeInEditor != SelectionType.LINE_WISE) false else rawIndent
+  }
+}
+public class AtCaretPasteOptions(public val direction: Direction, rawIndent: Boolean = true, count: Int = 1): PasteOptions(rawIndent, count)
+public class ToLinePasteOptions(public val line: Int, rawIndent: Boolean = true, count: Int = 1): PasteOptions(rawIndent, count)
