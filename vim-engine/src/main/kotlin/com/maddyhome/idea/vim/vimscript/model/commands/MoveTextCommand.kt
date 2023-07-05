@@ -92,18 +92,15 @@ public data class MoveTextCommand(val ranges: Ranges, val argument: String) : Co
     } else {
       false
     }
-    injector.put.putTextForCaret(
+    injector.put.putTextForCaretNonVisual(
       caret,
       context,
       textData,
-      null,
       insertTextBeforeCaret,
       caretAfterInsertedText = false,
       rawIndent = true,
       count = 1,
       putToLine = line,
-      updateVisualMarks = false, // doesn't matter
-      modifyRegister = false, // doesn't matter
     )
 
     if (dropNewLineInEnd) {

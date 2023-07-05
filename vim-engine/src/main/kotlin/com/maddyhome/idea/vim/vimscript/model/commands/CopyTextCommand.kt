@@ -38,18 +38,15 @@ public data class CopyTextCommand(val ranges: Ranges, val argument: String) : Co
 
       val transferableData = injector.clipboardManager.getTransferableData(editor, range, text)
       val textData = TextData(text, SelectionType.LINE_WISE, transferableData, null)
-      injector.put.putTextForCaret(
+      injector.put.putTextForCaretNonVisual(
         caret,
         context,
         textData,
-        null,
         insertTextBeforeCaret = false,
         caretAfterInsertedText = false,
         rawIndent = true,
         count = 1,
         putToLine = line,
-        updateVisualMarks = false, // doesn't matter
-        modifyRegister = false, // doesn't matter
         )
     }
     return ExecutionResult.Success

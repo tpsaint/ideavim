@@ -37,6 +37,7 @@ import com.maddyhome.idea.vim.diagnostic.VimLogger
 import com.maddyhome.idea.vim.diagnostic.vimLogger
 import com.maddyhome.idea.vim.helper.RWLockLabel
 import com.maddyhome.idea.vim.helper.firstOrNull
+import com.maddyhome.idea.vim.helper.inVisualMode
 import com.maddyhome.idea.vim.helper.mode
 import com.maddyhome.idea.vim.helper.subMode
 import com.maddyhome.idea.vim.mark.VimMarkConstants.MARK_CHANGE_POS
@@ -530,6 +531,32 @@ public abstract class VimPutBase : VimPut {
     val startOffset = min(blockStartOffset, blockEndOffset!!)
     val endOffset = max(blockStartOffset, blockEndOffset!!)
     return Pair(caret, createRangeMarker(editor, startOffset, endOffset))
+  }
+
+  override fun putTextForCaretNonVisual(
+    caret: VimCaret,
+    context: ExecutionContext,
+    textData: TextData?,
+    insertTextBeforeCaret: Boolean,
+    caretAfterInsertedText: Boolean,
+    rawIndent: Boolean,
+    count: Int,
+    putToLine: Int
+  ): RangeMarker? {
+    assert(!caret.editor.inVisualMode)
+    return putTextForCaret(
+      caret,
+      context,
+      textData,
+      null,
+      insertTextBeforeCaret,
+      caretAfterInsertedText,
+      rawIndent,
+      count,
+      putToLine,
+      updateVisualMarks = false,
+      modifyRegister = false
+    )
   }
 
   @RWLockLabel.SelfSynchronized

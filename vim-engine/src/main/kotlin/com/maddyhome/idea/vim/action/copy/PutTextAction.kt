@@ -38,18 +38,15 @@ public sealed class PutTextBaseAction(
       var result = true
       injector.application.runWriteAction {
         caretToTextData.forEach {
-          result = injector.put.putTextForCaret(
+          result = injector.put.putTextForCaretNonVisual(
             it.key,
             context,
             it.value,
-            null,
             insertTextBeforeCaret,
             caretAfterInsertedText,
             indent,
             count,
             putToLine = -1,
-            updateVisualMarks = false, // doesn't matter
-            modifyRegister = false, // doesn't matter
             ) != null && result
         }
       }

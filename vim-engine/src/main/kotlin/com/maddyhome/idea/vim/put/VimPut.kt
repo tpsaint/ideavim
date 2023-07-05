@@ -33,6 +33,18 @@ public interface VimPut {
   ): Map<VimCaret, RangeMarker>?
 
   @RWLockLabel.SelfSynchronized
+  public fun putTextForCaretNonVisual(
+    caret: VimCaret,
+    context: ExecutionContext,
+    textData: TextData?,
+    insertTextBeforeCaret: Boolean,
+    caretAfterInsertedText: Boolean,
+    rawIndent: Boolean,
+    count: Int,
+    putToLine: Int = -1,
+  ): RangeMarker?
+
+  @RWLockLabel.SelfSynchronized
   public fun putTextForCaret(
     caret: VimCaret,
     context: ExecutionContext,
@@ -43,8 +55,8 @@ public interface VimPut {
     rawIndent: Boolean,
     count: Int,
     putToLine: Int = -1,
-    updateVisualMarks: Boolean = false,
-    modifyRegister: Boolean = true,
+    updateVisualMarks: Boolean,
+    modifyRegister: Boolean,
   ): RangeMarker?
 }
 

@@ -187,18 +187,15 @@ internal class VimSurroundExtension : VimExtension {
             val textData = TextData(text, SelectionType.CHARACTER_WISE, emptyList(), null)
             surrounding.caret to textData
           }.forEach {
-            injector.put.putTextForCaret(
+            injector.put.putTextForCaretNonVisual(
               it.first,
               context,
               it.second,
-              null, // no selection
               insertTextBeforeCaret = true,
               caretAfterInsertedText = false,
               rawIndent = true,
               count = 1,
               putToLine = -1,
-              updateVisualMarks = false,
-              modifyRegister = false,
               )
           }
 
