@@ -534,7 +534,7 @@ public abstract class VimPutBase : VimPut {
     modifyRegister: Boolean,
   ): RangeMarker? {
     val editor = caret.editor
-    val indent = pasteOptions.getIndent(textData, visualSelection)
+    val indent = pasteOptions.shouldAddIndent(textData, visualSelection)
     val additionalData = collectPreModificationData(editor, visualSelection)
     visualSelection?.let {
       deleteSelectedText(
@@ -583,9 +583,9 @@ public abstract class VimPutBase : VimPut {
     return injector.application.runWriteAction {
       // todo refactor me
       val pasteOptions = if (putToLine == -1) {
-        AtCaretPasteOptions(if (insertTextBeforeCaret) Direction.BACKWARDS else Direction.FORWARDS, true, count)
+        AtCaretPasteOptions(if (insertTextBeforeCaret) Direction.BACKWARDS else Direction.FORWARDS, indent, count)
       } else {
-        ToLinePasteOptions(putToLine, true, count)
+        ToLinePasteOptions(putToLine, indent, count)
       }
       myCarets.mapNotNull { caret -> putForCaret(editor, caret, visualSelection, pasteOptions, caretAfterInsertedText, indent, additionalData, context, text) }.toMap()
     }

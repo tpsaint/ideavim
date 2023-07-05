@@ -57,7 +57,7 @@ public data class PutLinesCommand(val ranges: Ranges, val argument: String) : Co
           editor.primaryCaret(),
           context,
           textData,
-          ToLinePasteOptions(line, rawIndent = false),
+          ToLinePasteOptions(line, adjustIndent = false),
           caretAfterInsertedText = false,
         ) ?: throw ExException("Failed to put line")
       }

@@ -110,9 +110,9 @@ internal class PutGroup : VimPutBase() {
     EditorHelper.getOrderedCaretsList(editor).forEach { caret ->
       // todo refactor me
       val pasteOptions = if (putToLine == -1) {
-        AtCaretPasteOptions(if (insertTextBeforeCaret) Direction.BACKWARDS else Direction.FORWARDS, true, count)
+        AtCaretPasteOptions(if (insertTextBeforeCaret) Direction.BACKWARDS else Direction.FORWARDS, indent, count)
       } else {
-        ToLinePasteOptions(putToLine, true, count)
+        ToLinePasteOptions(putToLine, indent, count)
       }
       
       val startOffset =
