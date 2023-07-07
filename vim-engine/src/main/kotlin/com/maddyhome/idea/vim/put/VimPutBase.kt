@@ -67,7 +67,7 @@ public abstract class VimPutBase : VimPut {
       }
   }
 
-  private fun processText(caret: VimCaret?, visualSelection: VisualSelection?, textData: TextData?): TextData? {
+  private fun processText(visualSelection: VisualSelection?, textData: TextData?): TextData? {
     var text = textData?.text ?: run {
       return null
     }
@@ -91,18 +91,17 @@ public abstract class VimPutBase : VimPut {
 
   public abstract fun doIndent(caret: VimCaret, context: ExecutionContext, startOffset: Int, endOffset: Int): Int
 
-  private fun putTextCharacterwise(caret: VimCaret, context: ExecutionContext, text: String, startOffset: Int, count: Int, indent: Boolean): Pair<Int, VimCaret> {
+  private fun putTextCharacterwise(caret: VimCaret, context: ExecutionContext, text: String, startOffset: Int, count: Int, indent: Boolean): Int {
     val editor = caret.editor
-    var updatedCaret = caret.moveToOffset(startOffset)
     val insertedText = text.repeat(count)
-    injector.application.runWriteAction { (editor as MutableVimEditor).insertText(updatedCaret.offset, insertedText) }
+    injector.application.runWriteAction { (editor as MutableVimEditor).insertText(startOffset.offset, insertedText) }
 
     val endOffset = if (indent) {
-      doIndent(updatedCaret, context, startOffset, startOffset + insertedText.length)
+      doIndent(caret, context, startOffset, startOffset + insertedText.length)
     } else {
       startOffset + insertedText.length
     }
-    return endOffset to updatedCaret
+    return endOffset
   }
 
   private fun putTextLinewise(
@@ -112,9 +111,10 @@ public abstract class VimPutBase : VimPut {
     startOffset: Int,
     count: Int,
     indent: Boolean,
-  ): Pair<Int, VimCaret> {
+  ): Int {
     val editor = caret.editor
     val overlappedCarets = ArrayList<VimCaret>(editor.carets().size)
+    // todo can we have overlapped carets during paste at all? Shouldn't it be already handled?
     for (possiblyOverlappedCaret in editor.carets()) {
       if (possiblyOverlappedCaret.offset.point != startOffset || possiblyOverlappedCaret == caret) continue
 
@@ -153,7 +153,7 @@ public abstract class VimPutBase : VimPut {
     startOffset: Int,
     count: Int,
     indent: Boolean,
-  ): Pair<Int, VimCaret> {
+  ): Int {
     // todo simplify me
     val editor = caret.editor
     val startPosition = editor.offsetToBufferPosition(startOffset)
@@ -161,12 +161,10 @@ public abstract class VimPutBase : VimPut {
     var currentLine = startPosition.line
 
     val lineCount = text.getLineBreakCount() + 1
-    var updated = caret
     if (currentLine + lineCount >= editor.nativeLineCount()) {
       val limit = currentLine + lineCount - editor.nativeLineCount()
       for (i in 0 until limit) {
-        updated = updated.moveToOffset(editor.fileSize().toInt())
-        injector.application.runWriteAction { (editor as MutableVimEditor).insertText(updated.offset, "\n") }
+        injector.application.runWriteAction { (editor as MutableVimEditor).insertText(editor.fileSize().toInt().offset, "\n") }
       }
     }
 
@@ -190,20 +188,17 @@ public abstract class VimPutBase : VimPut {
       val pad = injector.engineEditorHelper.pad(editor, context, currentLine, currentColumn)
 
       val insertOffset = editor.bufferPositionToOffset(BufferPosition(currentLine, currentColumn))
-      updated = updated.moveToOffset(insertOffset)
       val insertedText = origSegment + segment.repeat(count - 1)
-      injector.application.runWriteAction { (editor as MutableVimEditor).insertText(updated.offset, insertedText) }
+      injector.application.runWriteAction { (editor as MutableVimEditor).insertText(insertOffset.offset, insertedText) }
 
       endOffset += insertedText.length
 
       if (mode == VimStateMachine.SubMode.VISUAL_LINE) {
-        updated = updated.moveToOffset(endOffset)
-        injector.application.runWriteAction { (editor as MutableVimEditor).insertText(updated.offset, "\n") }
+        injector.application.runWriteAction { (editor as MutableVimEditor).insertText(endOffset.offset, "\n") }
         ++endOffset
       } else {
         if (pad.isNotEmpty()) {
-          updated = updated.moveToOffset(insertOffset)
-          injector.application.runWriteAction { (editor as MutableVimEditor).insertText(updated.offset, pad) }
+          injector.application.runWriteAction { (editor as MutableVimEditor).insertText(insertOffset.offset, pad) }
           endOffset += pad.length
         }
       }
@@ -214,10 +209,10 @@ public abstract class VimPutBase : VimPut {
       ++currentLine
     }
     val lineLengthBeforeIndent = editor.lineLength(startPosition.line)
-    if (indent) doIndent(updated, context, startOffset, endOffset)
+    if (indent) doIndent(caret, context, startOffset, endOffset)
     val lineLengthAfterIndent = editor.lineLength(startPosition.line)
     val indentSize = lineLengthAfterIndent - lineLengthBeforeIndent
-    return firstPasteEndOffset!! + indentSize to updated
+    return firstPasteEndOffset!! + indentSize
   }
 
   private fun putTextInternal(
@@ -229,7 +224,7 @@ public abstract class VimPutBase : VimPut {
     startOffset: Int,
     count: Int,
     indent: Boolean,
-  ): Pair<Int, VimCaret> {
+  ): Int {
     return when (type) {
       SelectionType.CHARACTER_WISE -> putTextCharacterwise(
         caret,
@@ -353,20 +348,18 @@ public abstract class VimPutBase : VimPut {
     text: TextData,
   ): Pair<VimCaret, RangeMarker>? {
     val editor = caret.editor
-    var updated = caret
     if (preModificationData.selectionType.isLine && editor.isOneLineMode()) return null
-    val startOffsets = prepareDocumentAndGetStartOffsets(editor, updated, text.typeInRegister, pasteOptions, preModificationData)
+    val startOffsets = prepareDocumentAndGetStartOffsets(editor, caret, text.typeInRegister, pasteOptions, preModificationData)
 
     // todo make block carets more convenient
     val pasteStartOffset = startOffsets.minOrNull()!!
     var pasteEndOffset: Int? = null
 
     startOffsets.forEach { startOffset ->
-      val (endOffset, updatedCaret) = putTextInternal(updated, context, text.text, text.typeInRegister, preModificationData.subMode, startOffset, pasteOptions.count, indent)
+      val endOffset = putTextInternal(caret, context, text.text, text.typeInRegister, preModificationData.subMode, startOffset, pasteOptions.count, indent)
       if (startOffset == pasteStartOffset) {
         pasteEndOffset = endOffset
       }
-      updated = updatedCaret
     }
     return Pair(caret, createRangeMarker(editor, pasteStartOffset, pasteEndOffset!!))
   }
@@ -392,7 +385,7 @@ public abstract class VimPutBase : VimPut {
     visualSelection?.let {
       deleteSelectedText(editor, visualSelection, OperatorArguments(false, 0, editor.mode, editor.subMode), modifyRegister)
     }
-    val processedText = processText(caret, visualSelection, textData) ?: return null
+    val processedText = processText(visualSelection, textData) ?: return null
 
     val (updatedCaret, rangeMarker) = putForCaret(caret, pasteOptions, indent, preModificationData, context, processedText) ?: return null
     if (updateVisualMarks) {
