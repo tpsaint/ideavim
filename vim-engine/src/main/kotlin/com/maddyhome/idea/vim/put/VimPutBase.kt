@@ -69,11 +69,6 @@ public abstract class VimPutBase : VimPut {
 
   private fun processText(caret: VimCaret?, visualSelection: VisualSelection?, textData: TextData?): TextData? {
     var text = textData?.text ?: run {
-      if (caret == null) return null
-      if (visualSelection != null) {
-        val offset = caret.offset.point
-        injector.markService.setMark(caret, MARK_CHANGE_POS, offset)
-      }
       return null
     }
 
@@ -100,7 +95,7 @@ public abstract class VimPutBase : VimPut {
     val editor = caret.editor
     var updatedCaret = caret.moveToOffset(startOffset)
     val insertedText = text.repeat(count)
-    updatedCaret = injector.changeGroup.insertText(editor, updatedCaret, insertedText)
+    injector.application.runWriteAction { (editor as MutableVimEditor).insertText(updatedCaret.offset, insertedText) }
 
     val endOffset = if (indent) {
       doIndent(updatedCaret, context, startOffset, startOffset + insertedText.length)
@@ -171,7 +166,7 @@ public abstract class VimPutBase : VimPut {
       val limit = currentLine + lineCount - editor.nativeLineCount()
       for (i in 0 until limit) {
         updated = updated.moveToOffset(editor.fileSize().toInt())
-        updated = injector.changeGroup.insertText(editor, updated, "\n")
+        injector.application.runWriteAction { (editor as MutableVimEditor).insertText(updated.offset, "\n") }
       }
     }
 
@@ -197,18 +192,18 @@ public abstract class VimPutBase : VimPut {
       val insertOffset = editor.bufferPositionToOffset(BufferPosition(currentLine, currentColumn))
       updated = updated.moveToOffset(insertOffset)
       val insertedText = origSegment + segment.repeat(count - 1)
-      updated = injector.changeGroup.insertText(editor, updated, insertedText)
+      injector.application.runWriteAction { (editor as MutableVimEditor).insertText(updated.offset, insertedText) }
 
       endOffset += insertedText.length
 
       if (mode == VimStateMachine.SubMode.VISUAL_LINE) {
         updated = updated.moveToOffset(endOffset)
-        updated = injector.changeGroup.insertText(editor, updated, "\n")
+        injector.application.runWriteAction { (editor as MutableVimEditor).insertText(updated.offset, "\n") }
         ++endOffset
       } else {
         if (pad.isNotEmpty()) {
           updated = updated.moveToOffset(insertOffset)
-          updated = injector.changeGroup.insertText(editor, updated, pad)
+          injector.application.runWriteAction { (editor as MutableVimEditor).insertText(updated.offset, pad) }
           endOffset += pad.length
         }
       }
@@ -404,6 +399,7 @@ public abstract class VimPutBase : VimPut {
       wrapInsertedTextWithVisualMarks(updatedCaret, rangeMarker.range)
     }
     injector.markService.setChangeMarks(updatedCaret, rangeMarker.range)
+    injector.markService.setMark(caret, MARK_CHANGE_POS, rangeMarker.range.startOffset)
 
     return rangeMarker
   }
