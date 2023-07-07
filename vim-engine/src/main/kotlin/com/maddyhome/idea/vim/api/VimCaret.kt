@@ -9,6 +9,8 @@
 package com.maddyhome.idea.vim.api
 
 import com.maddyhome.idea.vim.command.SelectionType
+import com.maddyhome.idea.vim.command.VimStateMachine
+import com.maddyhome.idea.vim.common.Direction
 import com.maddyhome.idea.vim.common.EditorLine
 import com.maddyhome.idea.vim.common.LiveRange
 import com.maddyhome.idea.vim.common.Offset
@@ -22,7 +24,9 @@ import com.maddyhome.idea.vim.helper.exitVisualMode
 import com.maddyhome.idea.vim.helper.inBlockSubMode
 import com.maddyhome.idea.vim.helper.inSelectMode
 import com.maddyhome.idea.vim.helper.inVisualMode
+import com.maddyhome.idea.vim.helper.mode
 import com.maddyhome.idea.vim.register.Register
+import java.lang.Integer.min
 import javax.swing.KeyStroke
 
 /**
@@ -125,6 +129,43 @@ per-caret marks.
   // TODO: [visual] Try to remove this. Visual position is an IntelliJ concept and Vim doesn't have a direct equivalent
   public fun moveToVisualPosition(position: VimVisualPosition)
 
+  // TODO should be extension function in VimPut or in a similar place
+  // TODO can't the signature be shorter? Can't we now the rangeType from previous mode and get the modeInEditor from some global state without passing it directly?
+  public fun moveToTextRange(range: TextRange, rangeType: SelectionType, modeInEditor: VimStateMachine.SubMode, direction: Direction): ImmutableVimCaret {
+    val textRangeMove = when (rangeType) {
+      SelectionType.BLOCK_WISE -> when (modeInEditor) {
+        VimStateMachine.SubMode.VISUAL_LINE -> {
+          if (direction == Direction.FORWARDS) TextRangeMove.POST_END_OFFSET else TextRangeMove.START_OFFSET
+        }
+        else -> if (direction == Direction.FORWARDS) TextRangeMove.PRE_LINE_END_OF_END_OFFSET else TextRangeMove.START_OFFSET
+      }
+      SelectionType.LINE_WISE -> if (direction == Direction.FORWARDS) TextRangeMove.POST_END_OFFSET else TextRangeMove.START_OFFSET_SKIP_LEADING
+      SelectionType.CHARACTER_WISE -> when (modeInEditor) {
+        VimStateMachine.SubMode.VISUAL_LINE -> if (direction == Direction.FORWARDS) TextRangeMove.POST_END_OFFSET else TextRangeMove.START_OFFSET
+        else -> if (direction == Direction.FORWARDS) TextRangeMove.PRE_LINE_END_OF_END_OFFSET else TextRangeMove.PRE_END_OFFSET
+      }
+    }
+    return moveToTextRange(range, textRangeMove)
+  }
+
+  public fun moveToTextRange(range: TextRange, type: TextRangeMove): ImmutableVimCaret {
+    return when (type) {
+      TextRangeMove.START_OFFSET -> this.moveToOffset(range.startOffset)
+      TextRangeMove.PRE_END_OFFSET -> this.moveToOffset(range.endOffset - 1)
+      TextRangeMove.START_OFFSET_SKIP_LEADING -> {
+        val updated = this.moveToOffset(range.startOffset)
+        updated.moveToOffset(injector.motion.moveCaretToCurrentLineStartSkipLeading(editor, updated))
+      }
+      TextRangeMove.POST_END_OFFSET -> this.moveToOffset(range.endOffset + 1)
+      TextRangeMove.PRE_LINE_END_OF_END_OFFSET -> {
+        var rightestPosition = editor.getLineEndForOffset(range.endOffset - 1)
+        if (editor.mode != VimStateMachine.Mode.INSERT) --rightestPosition // it's not possible to place a caret at the end of the line in any mode except insert
+        val pos = min(range.endOffset, rightestPosition)
+        this.moveToOffset(pos)
+      }
+    }
+  }
+
   /**
    * Same as setter for [vimLastColumn] but returns the new version of the caret.
    * As the common strategies for caret processing are not yet created, there is no need to adapt
@@ -164,3 +205,11 @@ public interface CaretRegisterStorage {
 }
 
 public data class SelectionInfo(public val start: BufferPosition?, public val end: BufferPosition?, public val type: SelectionType)
+
+public enum class TextRangeMove {
+  START_OFFSET,
+  START_OFFSET_SKIP_LEADING,
+  PRE_END_OFFSET, // TODO better name?
+  PRE_LINE_END_OF_END_OFFSET, // TODO better name?
+  POST_END_OFFSET,
+}

@@ -15,6 +15,8 @@ import com.maddyhome.idea.vim.api.getText
 import com.maddyhome.idea.vim.api.injector
 import com.maddyhome.idea.vim.command.OperatorArguments
 import com.maddyhome.idea.vim.command.SelectionType
+import com.maddyhome.idea.vim.command.VimStateMachine
+import com.maddyhome.idea.vim.common.Direction
 import com.maddyhome.idea.vim.ex.ExException
 import com.maddyhome.idea.vim.ex.ranges.Ranges
 import com.maddyhome.idea.vim.put.TextData
@@ -39,13 +41,13 @@ public data class CopyTextCommand(val ranges: Ranges, val argument: String) : Co
 
       val transferableData = injector.clipboardManager.getTransferableData(editor, range, text)
       val textData = TextData(text, SelectionType.LINE_WISE, transferableData, null)
-      injector.put.putTextForCaretNonVisual(
+      val insertedRange = injector.put.putTextForCaretNonVisual(
         caret,
         context,
         textData,
         ToLinePasteOptions(line),
-        caretAfterInsertedText = false,
-        )
+        ) ?: throw ExException("Failed to perform paste")
+      caret.moveToTextRange(insertedRange.range, textData.typeInRegister, VimStateMachine.SubMode.NONE, Direction.BACKWARDS)
     }
     return ExecutionResult.Success
   }

@@ -22,6 +22,7 @@ import com.maddyhome.idea.vim.command.VimStateMachine
 import com.maddyhome.idea.vim.command.isLine
 import com.maddyhome.idea.vim.common.Direction
 import com.maddyhome.idea.vim.common.TextRange
+import com.maddyhome.idea.vim.ex.ExException
 import com.maddyhome.idea.vim.extension.ExtensionHandler
 import com.maddyhome.idea.vim.extension.VimExtension
 import com.maddyhome.idea.vim.extension.VimExtensionFacade
@@ -158,16 +159,16 @@ internal class ReplaceWithRegister : VimExtension {
       val textData = TextData(usedText, usedType, savedRegister.transferableData, savedRegister.name)
       
       ClipboardOptionHelper.IdeaputDisabler().use {
-        injector.put.putTextForCaret(
+        val insertedRange = injector.put.putTextForCaret(
           caret,
           injector.executionContextManager.onEditor(editor.vim),
           textData,
           visualSelection,
           AtCaretPasteOptions(Direction.BACKWARDS),
-          caretAfterInsertedText = false,
           updateVisualMarks = true,
           modifyRegister = false
-        )
+        ) ?: throw ExException("Failed to perform paste")
+        caret.moveToTextRange(insertedRange.range, textData.typeInRegister, visualSelection.typeInEditor.toSubMode(), Direction.BACKWARDS)
       }
     }
   }

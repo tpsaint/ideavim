@@ -20,6 +20,7 @@ import com.maddyhome.idea.vim.api.getText
 import com.maddyhome.idea.vim.api.injector
 import com.maddyhome.idea.vim.command.OperatorArguments
 import com.maddyhome.idea.vim.command.SelectionType
+import com.maddyhome.idea.vim.command.VimStateMachine
 import com.maddyhome.idea.vim.common.Direction
 import com.maddyhome.idea.vim.common.TextRange
 import com.maddyhome.idea.vim.ex.ExException
@@ -95,13 +96,13 @@ public data class MoveTextCommand(val ranges: Ranges, val argument: String) : Co
       ToLinePasteOptions(line)
     }
     
-    injector.put.putTextForCaretNonVisual(
+    val insertedRange = injector.put.putTextForCaretNonVisual(
       caret,
       context,
       textData,
       pasteOptions,
-      caretAfterInsertedText = false,
-    )
+    ) ?: throw ExException("Failed to perform paste")
+    caret.moveToTextRange(insertedRange.range, textData.typeInRegister, VimStateMachine.SubMode.NONE, Direction.BACKWARDS)
 
     if (dropNewLineInEnd) {
       assert(editor.text().last() == '\n')

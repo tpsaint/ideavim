@@ -15,7 +15,9 @@ import com.maddyhome.idea.vim.api.injector
 import com.maddyhome.idea.vim.command.Command
 import com.maddyhome.idea.vim.command.CommandFlags
 import com.maddyhome.idea.vim.command.OperatorArguments
+import com.maddyhome.idea.vim.command.VimStateMachine
 import com.maddyhome.idea.vim.common.Direction
+import com.maddyhome.idea.vim.ex.ExException
 import com.maddyhome.idea.vim.group.visual.VimSelection
 import com.maddyhome.idea.vim.handler.VisualOperatorActionHandler
 import com.maddyhome.idea.vim.helper.enumSetOf
@@ -51,17 +53,21 @@ public sealed class PutVisualTextBaseAction(
     injector.registerGroup.resetRegister()
     var result = true
     injector.application.runWriteAction {
-      caretToPutData.forEach {
-        result = injector.put.putTextForCaret(
-          it.key,
-          context,
-          it.value.first,
-          it.value.second,
-          AtCaretPasteOptions(direction, indent, count),
-          caretAfterInsertedText,
-          updateVisualMarks = true,
-          modifyRegister = modifyRegister,
-          ) != null && result
+      try {
+        caretToPutData.forEach {
+          val insertedRange = injector.put.putTextForCaret(
+            it.key,
+            context,
+            it.value.first,
+            it.value.second,
+            AtCaretPasteOptions(direction, indent, count),
+            updateVisualMarks = true,
+            modifyRegister = modifyRegister,
+          ) ?: throw ExException("Failed to perform paste")
+          it.key.moveToTextRange(insertedRange.range, it.value.first!!.typeInRegister, it.value.second?.typeInEditor?.toSubMode() ?: VimStateMachine.SubMode.NONE, if (caretAfterInsertedText) Direction.FORWARDS else Direction.BACKWARDS)
+        }
+      } catch (e: ExException) {
+        result = false
       }
     }
     return result

@@ -14,10 +14,8 @@ import com.maddyhome.idea.vim.api.ImmutableVimCaret
 import com.maddyhome.idea.vim.api.MutableVimEditor
 import com.maddyhome.idea.vim.api.VimCaret
 import com.maddyhome.idea.vim.api.VimEditor
-import com.maddyhome.idea.vim.api.getLineEndForOffset
 import com.maddyhome.idea.vim.api.getLineEndOffset
 import com.maddyhome.idea.vim.api.getText
-import com.maddyhome.idea.vim.api.globalOptions
 import com.maddyhome.idea.vim.api.injector
 import com.maddyhome.idea.vim.api.isLineEmpty
 import com.maddyhome.idea.vim.api.lineLength
@@ -42,7 +40,6 @@ import com.maddyhome.idea.vim.helper.inVisualMode
 import com.maddyhome.idea.vim.helper.mode
 import com.maddyhome.idea.vim.helper.subMode
 import com.maddyhome.idea.vim.mark.VimMarkConstants.MARK_CHANGE_POS
-import com.maddyhome.idea.vim.options.OptionConstants
 import java.util.*
 import kotlin.math.abs
 import kotlin.math.max
@@ -128,45 +125,6 @@ public abstract class VimPutBase : VimPut {
     )
   }
 
-  protected fun moveCaretToEndPosition(
-    editor: VimEditor,
-    caret: VimCaret,
-    startOffset: Int,
-    endOffset: Int,
-    typeInRegister: SelectionType,
-    modeInEditor: VimStateMachine.SubMode,
-    caretAfterInsertedText: Boolean,
-  ): VimCaret {
-    val cursorMode = when (typeInRegister) {
-      SelectionType.BLOCK_WISE -> when (modeInEditor) {
-        VimStateMachine.SubMode.VISUAL_LINE -> if (caretAfterInsertedText) "postEndOffset" else "startOffset"
-        else -> if (caretAfterInsertedText) "preLineEndOfEndOffset" else "startOffset"
-      }
-      SelectionType.LINE_WISE -> if (caretAfterInsertedText) "postEndOffset" else "startOffsetSkipLeading"
-      SelectionType.CHARACTER_WISE -> when (modeInEditor) {
-        VimStateMachine.SubMode.VISUAL_LINE -> if (caretAfterInsertedText) "postEndOffset" else "startOffset"
-        else -> if (caretAfterInsertedText) "preLineEndOfEndOffset" else "preEndOffset"
-      }
-    }
-
-    return when (cursorMode) {
-      "startOffset" -> caret.moveToOffset(startOffset)
-      "preEndOffset" -> caret.moveToOffset(endOffset - 1)
-      "startOffsetSkipLeading" -> {
-        val updated = caret.moveToOffset(startOffset)
-        updated.moveToOffset(injector.motion.moveCaretToCurrentLineStartSkipLeading(editor, updated))
-      }
-      "postEndOffset" -> caret.moveToOffset(endOffset + 1)
-      "preLineEndOfEndOffset" -> {
-        var rightestPosition = editor.getLineEndForOffset(endOffset - 1)
-        if (editor.mode != VimStateMachine.Mode.INSERT) --rightestPosition // it's not possible to place a caret at the end of the line in any mode except insert
-        val pos = min(endOffset, rightestPosition)
-        caret.moveToOffset(pos)
-      }
-      else -> error("Unexpected mode")
-    }
-  }
-
   public abstract fun doIndent(
     editor: VimEditor,
     caret: VimCaret,
@@ -185,7 +143,6 @@ public abstract class VimPutBase : VimPut {
     startOffset: Int,
     count: Int,
     indent: Boolean,
-    cursorAfter: Boolean,
   ): Pair<Int, VimCaret> {
     var updatedCaret = caret.moveToOffset(startOffset)
     val insertedText = text.repeat(count)
@@ -196,8 +153,6 @@ public abstract class VimPutBase : VimPut {
     } else {
       startOffset + insertedText.length
     }
-    updatedCaret = moveCaretToEndPosition(editor, updatedCaret, startOffset, endOffset, type, mode, cursorAfter)
-
     return endOffset to updatedCaret
   }
 
@@ -211,7 +166,6 @@ public abstract class VimPutBase : VimPut {
     startOffset: Int,
     count: Int,
     indent: Boolean,
-    cursorAfter: Boolean,
   ): Pair<Int, VimCaret> {
     val overlappedCarets = ArrayList<VimCaret>(editor.carets().size)
     for (possiblyOverlappedCaret in editor.carets()) {
@@ -225,7 +179,6 @@ public abstract class VimPutBase : VimPut {
 
     val endOffset = putTextCharacterwise(
       editor, caret, context, text, type, mode, startOffset, count, indent,
-      cursorAfter,
     )
 
     for (overlappedCaret in overlappedCarets) {
@@ -257,7 +210,6 @@ public abstract class VimPutBase : VimPut {
     startOffset: Int,
     count: Int,
     indent: Boolean,
-    cursorAfter: Boolean,
   ): Pair<Int, VimCaret> {
     val startPosition = editor.offsetToBufferPosition(startOffset)
     val currentColumn = if (mode == VimStateMachine.SubMode.VISUAL_LINE) 0 else startPosition.column
@@ -310,10 +262,7 @@ public abstract class VimPutBase : VimPut {
 
       ++currentLine
     }
-
     if (indent) endOffset = doIndent(editor, updated, context, startOffset, endOffset)
-    updated = moveCaretToEndPosition(editor, updated, startOffset, endOffset, type, mode, cursorAfter)
-
     return endOffset to updated
   }
 
@@ -327,7 +276,6 @@ public abstract class VimPutBase : VimPut {
     startOffset: Int,
     count: Int,
     indent: Boolean,
-    cursorAfter: Boolean,
   ): Pair<Int, VimCaret> {
     return when (type) {
       SelectionType.CHARACTER_WISE -> putTextCharacterwise(
@@ -340,7 +288,6 @@ public abstract class VimPutBase : VimPut {
         startOffset,
         count,
         indent,
-        cursorAfter,
       )
       SelectionType.LINE_WISE -> putTextLinewise(
         editor,
@@ -352,9 +299,8 @@ public abstract class VimPutBase : VimPut {
         startOffset,
         count,
         indent,
-        cursorAfter,
       )
-      else -> putTextBlockwise(editor, caret, context, text, type, mode, startOffset, count, indent, cursorAfter)
+      else -> putTextBlockwise(editor, caret, context, text, type, mode, startOffset, count, indent)
     }
   }
 
@@ -462,7 +408,6 @@ public abstract class VimPutBase : VimPut {
     caret: VimCaret,
     visualSelection: VisualSelection?,
     pasteOptions: PasteOptions,
-    caretAfterInsertedText: Boolean,
     indent: Boolean,
     additionalData: Map<String, Any>,
     context: ExecutionContext,
@@ -472,34 +417,26 @@ public abstract class VimPutBase : VimPut {
     if (visualSelection?.typeInEditor?.isLine == true && editor.isOneLineMode()) return null
     val startOffsets = prepareDocumentAndGetStartOffsets(editor, updated, text.typeInRegister, visualSelection, pasteOptions, additionalData)
 
-    val blockStartOffset = startOffsets.firstOrNull()
-    var blockEndOffset: Int? = null
+    // todo make block carets more convenient
+    // todo visualSelection is obsolete here (text was deleted)
+    val pasteStartOffset = startOffsets.minOrNull()!!
+    var pasteEndOffset: Int? = null
 
     startOffsets.forEach { startOffset ->
       val subMode = visualSelection?.typeInEditor?.toSubMode() ?: VimStateMachine.SubMode.NONE
       val (endOffset, updatedCaret) = putTextInternal(
         editor, updated, context, text.text, text.typeInRegister, subMode,
-        startOffset, pasteOptions.count, indent, caretAfterInsertedText,
+        startOffset, pasteOptions.count, indent
       )
+      if (startOffset == pasteStartOffset) {
+        pasteEndOffset = endOffset
+      }
       updated = updatedCaret
-      updated = moveCaretToEndPosition(
-        editor,
-        updatedCaret,
-        startOffset,
-        endOffset,
-        text.typeInRegister,
-        subMode,
-        caretAfterInsertedText,
-      )
-      blockEndOffset = endOffset
     }
 
-    assert(blockStartOffset != null && blockEndOffset != null)
-    injector.markService.setChangeMarks(updated, TextRange(blockStartOffset!!, blockEndOffset!!))
-
-    val startOffset = min(blockStartOffset, blockEndOffset!!)
-    val endOffset = max(blockStartOffset, blockEndOffset!!)
-    return Pair(caret, createRangeMarker(editor, startOffset, endOffset))
+    // It's not a bug. Vim literally assumes that only one line was changed
+    injector.markService.setChangeMarks(updated, TextRange(pasteStartOffset, pasteEndOffset!!))
+    return Pair(caret, createRangeMarker(editor, pasteStartOffset, pasteEndOffset!!))
   }
 
   override fun putTextForCaretNonVisual(
@@ -507,7 +444,6 @@ public abstract class VimPutBase : VimPut {
     context: ExecutionContext,
     textData: TextData?,
     pasteOptions: PasteOptions,
-    caretAfterInsertedText: Boolean,
   ): RangeMarker? {
     assert(!caret.editor.inVisualMode)
     return putTextForCaret(
@@ -516,7 +452,6 @@ public abstract class VimPutBase : VimPut {
       textData,
       null,
       pasteOptions,
-      caretAfterInsertedText,
       updateVisualMarks = false,
       modifyRegister = false
     )
@@ -529,7 +464,6 @@ public abstract class VimPutBase : VimPut {
     textData: TextData?,
     visualSelection: VisualSelection?,
     pasteOptions: PasteOptions,
-    caretAfterInsertedText: Boolean,
     updateVisualMarks: Boolean,
     modifyRegister: Boolean,
   ): RangeMarker? {
@@ -546,49 +480,12 @@ public abstract class VimPutBase : VimPut {
     }
     val processedText = processText(caret, visualSelection, textData) ?: return null
    
-    val (updatedCaret, rangeMarker) = putForCaret(editor, caret, visualSelection, pasteOptions, caretAfterInsertedText, indent, additionalData, context, processedText) ?: return null
+    val (updatedCaret, rangeMarker) = putForCaret(editor, caret, visualSelection, pasteOptions, indent, additionalData, context, processedText) ?: return null
     if (updateVisualMarks) {
       // todo pass there rangeMarker?
       wrapInsertedTextWithVisualMarks(updatedCaret, visualSelection, processedText)
     }
     return rangeMarker
-  }
-
-  @RWLockLabel.SelfSynchronized
-  private fun putTextAndSetCaretPosition(
-    editor: VimEditor,
-    context: ExecutionContext,
-    text: TextData,
-    visualSelection: VisualSelection?,
-    insertTextBeforeCaret: Boolean,
-    caretAfterInsertedText: Boolean,
-    indent: Boolean,
-    putToLine: Int,
-    count: Int,
-    additionalData: Map<String, Any>,
-  ): Map<VimCaret, RangeMarker>? {
-    val subMode = visualSelection?.typeInEditor?.toSubMode() ?: VimStateMachine.SubMode.NONE
-    if (injector.globalOptions().clipboard.contains(OptionConstants.clipboard_ideaput)) {
-      logger.debug("Performing put via idea paste")
-      val caretsToText = putTextViaIde(editor, context, text, visualSelection, insertTextBeforeCaret, caretAfterInsertedText, indent, putToLine, count, subMode, additionalData)
-      if (caretsToText != null) {
-        logger.debug("Put via IDE successful")
-        return caretsToText
-      }
-    }
-
-    logger.debug("Perform put via plugin")
-    val myCarets = visualSelection?.caretsAndSelections?.keys?.sortedByDescending { it.getBufferPosition() }
-      ?: editor.sortedNativeCarets().reversed()
-    return injector.application.runWriteAction {
-      // todo refactor me
-      val pasteOptions = if (putToLine == -1) {
-        AtCaretPasteOptions(if (insertTextBeforeCaret) Direction.BACKWARDS else Direction.FORWARDS, indent, count)
-      } else {
-        ToLinePasteOptions(putToLine, indent, count)
-      }
-      myCarets.mapNotNull { caret -> putForCaret(editor, caret, visualSelection, pasteOptions, caretAfterInsertedText, indent, additionalData, context, text) }.toMap()
-    }
   }
 
   @RWLockLabel.SelfSynchronized

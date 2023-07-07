@@ -14,7 +14,9 @@ import com.maddyhome.idea.vim.api.injector
 import com.maddyhome.idea.vim.command.Argument
 import com.maddyhome.idea.vim.command.Command
 import com.maddyhome.idea.vim.command.OperatorArguments
+import com.maddyhome.idea.vim.command.VimStateMachine
 import com.maddyhome.idea.vim.common.Direction
+import com.maddyhome.idea.vim.ex.ExException
 import com.maddyhome.idea.vim.handler.ChangeEditorActionHandler
 import com.maddyhome.idea.vim.put.AtCaretPasteOptions
 import com.maddyhome.idea.vim.put.TextData
@@ -38,14 +40,19 @@ public sealed class PutTextBaseAction(
     val caretToTextData = sortedCarets.associateWith { getTextDataForCaret(it) }
     var result = true
     injector.application.runWriteAction {
-      caretToTextData.forEach {
-        result = injector.put.putTextForCaretNonVisual(
-          it.key,
-          context,
-          it.value,
-          AtCaretPasteOptions(direction, indent, count),
-          caretAfterInsertedText,
-        ) != null && result
+      try {
+        caretToTextData.forEach {
+          val insertedRange = injector.put.putTextForCaretNonVisual(
+            it.key,
+            context,
+            it.value,
+            AtCaretPasteOptions(direction, indent, count),
+          ) ?: throw ExException("Failed to perform paste")
+          // todo do something with textData nullability
+          it.key.moveToTextRange(insertedRange.range, it.value?.typeInRegister!!, VimStateMachine.SubMode.NONE, if (caretAfterInsertedText) Direction.FORWARDS else Direction.BACKWARDS)
+        }
+      } catch (e: ExException) {
+        result = false
       }
     }
     return result

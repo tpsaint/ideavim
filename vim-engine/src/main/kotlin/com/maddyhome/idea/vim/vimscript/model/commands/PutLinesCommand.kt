@@ -14,6 +14,8 @@ import com.maddyhome.idea.vim.api.VimEditor
 import com.maddyhome.idea.vim.api.injector
 import com.maddyhome.idea.vim.command.OperatorArguments
 import com.maddyhome.idea.vim.command.SelectionType
+import com.maddyhome.idea.vim.command.VimStateMachine
+import com.maddyhome.idea.vim.common.Direction
 import com.maddyhome.idea.vim.ex.ExException
 import com.maddyhome.idea.vim.ex.ranges.Ranges
 import com.maddyhome.idea.vim.put.RangeMarker
@@ -53,13 +55,13 @@ public data class PutLinesCommand(val ranges: Ranges, val argument: String) : Co
     }
     try {
       editor.forEachCaret {
-        injector.put.putTextForCaretNonVisual(
-          editor.primaryCaret(),
+        val insertedRange = injector.put.putTextForCaretNonVisual(
+          it,
           context,
           textData,
           ToLinePasteOptions(line, adjustIndent = false),
-          caretAfterInsertedText = false,
         ) ?: throw ExException("Failed to put line")
+        it.moveToTextRange(insertedRange.range, textData!!.typeInRegister, VimStateMachine.SubMode.NONE, Direction.BACKWARDS)
       }
     } catch (e: ExException) {
       return ExecutionResult.Error

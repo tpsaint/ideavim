@@ -14,6 +14,7 @@ import com.maddyhome.idea.vim.command.Argument
 import com.maddyhome.idea.vim.command.Command
 import com.maddyhome.idea.vim.command.OperatorArguments
 import com.maddyhome.idea.vim.command.SelectionType
+import com.maddyhome.idea.vim.command.VimStateMachine
 import com.maddyhome.idea.vim.common.Direction
 import com.maddyhome.idea.vim.ex.ExException
 import com.maddyhome.idea.vim.handler.VimActionHandler
@@ -84,13 +85,13 @@ private fun insertRegister(
       val register = it.registerStorage.getRegister(key) ?: throw ExException("Met caret with empty $key register")
       val text = register.rawText ?: injector.parser.toPrintableString(register.keys)
       val textData = TextData(text, SelectionType.CHARACTER_WISE, emptyList(), register.name)
-      injector.put.putTextForCaretNonVisual(
+      val insertedRange = injector.put.putTextForCaretNonVisual(
         it,
         context,
         textData,
         AtCaretPasteOptions(Direction.BACKWARDS),
-        caretAfterInsertedText = true,
-      )
+      ) ?: throw ExException("Failed to perform paste")
+      it.moveToTextRange(insertedRange.range, textData.typeInRegister, VimStateMachine.SubMode.NONE, Direction.FORWARDS)
     }
   } catch (e: ExException) {
     return false

@@ -23,6 +23,7 @@ import com.maddyhome.idea.vim.command.SelectionType
 import com.maddyhome.idea.vim.command.VimStateMachine
 import com.maddyhome.idea.vim.common.Direction
 import com.maddyhome.idea.vim.common.TextRange
+import com.maddyhome.idea.vim.ex.ExException
 import com.maddyhome.idea.vim.extension.ExtensionHandler
 import com.maddyhome.idea.vim.extension.VimExtension
 import com.maddyhome.idea.vim.extension.VimExtensionFacade.executeNormalWithoutMapping
@@ -189,13 +190,13 @@ internal class VimSurroundExtension : VimExtension {
             val textData = TextData(text, SelectionType.CHARACTER_WISE, emptyList(), null)
             surrounding.caret to textData
           }.forEach {
-            injector.put.putTextForCaretNonVisual(
+            val insertedRange = injector.put.putTextForCaretNonVisual(
               it.first,
               context,
               it.second,
               AtCaretPasteOptions(Direction.BACKWARDS),
-              caretAfterInsertedText = false,
-              )
+              ) ?: throw ExException("Surround failed to perform paste")
+            it.first.moveToTextRange(insertedRange.range, it.second.typeInRegister, VimStateMachine.SubMode.NONE, Direction.BACKWARDS)
           }
 
         surroundings.forEach {

@@ -22,9 +22,9 @@ public interface VimPut {
     context: ExecutionContext,
     textData: TextData?,
     pasteOptions: PasteOptions,
-    caretAfterInsertedText: Boolean,
   ): RangeMarker?
 
+  // TODO when does it return null?
   @RWLockLabel.SelfSynchronized
   public fun putTextForCaret(
     caret: VimCaret,
@@ -32,7 +32,6 @@ public interface VimPut {
     textData: TextData?,
     visualSelection: VisualSelection?,
     pasteOptions: PasteOptions,
-    caretAfterInsertedText: Boolean,
     updateVisualMarks: Boolean,
     modifyRegister: Boolean,
   ): RangeMarker?
