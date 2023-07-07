@@ -160,7 +160,9 @@ public abstract class VimPutBase : VimPut {
     val currentColumn = if (mode == VimStateMachine.SubMode.VISUAL_LINE) 0 else startPosition.column
     var currentLine = startPosition.line
 
-    val lineCount = text.getLineBreakCount() + 1
+    val tokenizer = StringTokenizer(text, "\n")
+    val lineCount = tokenizer.countTokens()
+
     if (currentLine + lineCount >= editor.nativeLineCount()) {
       val limit = currentLine + lineCount - editor.nativeLineCount()
       for (i in 0 until limit) {
@@ -169,9 +171,8 @@ public abstract class VimPutBase : VimPut {
     }
 
     val maxLen = getMaxSegmentLength(text)
-    val tokenizer = StringTokenizer(text, "\n")
     var endOffset = startOffset
-    var firstPasteEndOffset: Int? = null // for some reason Vim sets change marks or moves caret as if only the first line of block selection was pasted
+    var firstPasteEndOffset: Int? = null // for some reason, Vim sets change marks or moves caret as if only the first line of block selection was pasted
 
     while (tokenizer.hasMoreTokens()) {
       var segment = tokenizer.nextToken()
@@ -442,23 +443,4 @@ public abstract class VimPutBase : VimPut {
       throw RuntimeException("You can't use call this method without block selection")
     }
   }
-}
-
-// This is taken from StringUtil of IntelliJ IDEA
-private fun CharSequence.getLineBreakCount(): Int {
-  var count = 0
-  var i = 0
-  while (i < length) {
-    val c = this[i]
-    if (c == '\n') {
-      count++
-    } else if (c == '\r') {
-      if (i + 1 < length && this[i + 1] == '\n') {
-        i++
-      }
-      count++
-    }
-    i++
-  }
-  return count
 }
