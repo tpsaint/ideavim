@@ -33,7 +33,7 @@ public abstract class VimStringParserBase : VimStringParser {
     return builder.toString()
   }
 
-  private fun keyStrokeToChar(key: KeyStroke): Char {
+  override fun keyStrokeToChar(key: KeyStroke): Char {
     if (key.keyChar != KeyEvent.CHAR_UNDEFINED) {
       return key.keyChar
     } else if (key.modifiers and InputEvent.CTRL_DOWN_MASK == InputEvent.CTRL_DOWN_MASK) {

@@ -15,8 +15,10 @@ import com.maddyhome.idea.vim.api.injector
 import com.maddyhome.idea.vim.command.Command
 import com.maddyhome.idea.vim.command.CommandFlags
 import com.maddyhome.idea.vim.command.OperatorArguments
+import com.maddyhome.idea.vim.command.SelectionType
 import com.maddyhome.idea.vim.command.VimStateMachine
 import com.maddyhome.idea.vim.common.Direction
+import com.maddyhome.idea.vim.common.TextRange
 import com.maddyhome.idea.vim.ex.ExException
 import com.maddyhome.idea.vim.group.visual.VimSelection
 import com.maddyhome.idea.vim.handler.VisualOperatorActionHandler
@@ -55,16 +57,25 @@ public sealed class PutVisualTextBaseAction(
     injector.application.runWriteAction {
       try {
         caretToPutData.forEach {
-          val insertedRange = injector.put.putTextForCaret(
-            it.key,
-            context,
-            it.value.first,
-            it.value.second,
-            AtCaretPasteOptions(direction, indent, count),
-            updateVisualMarks = true,
-            modifyRegister = modifyRegister,
-          ) ?: throw ExException("Failed to perform paste")
-          it.key.moveToTextRange(insertedRange.range, it.value.first!!.typeInRegister, it.value.second?.typeInEditor?.toSubMode() ?: VimStateMachine.SubMode.NONE, if (caretAfterInsertedText) Direction.FORWARDS else Direction.BACKWARDS)
+          val textData = it.value.first
+          if (textData != null) {
+            val insertedRange = injector.put.putTextForCaret(
+              it.key,
+              context,
+              textData ?: TextData("", SelectionType.CHARACTER_WISE, emptyList(), null),
+              it.value.second,
+              AtCaretPasteOptions(direction, indent, count),
+              updateVisualMarks = true,
+              modifyRegister = modifyRegister,
+            ) ?: throw ExException("Failed to perform paste")
+            it.key.moveToTextRange(insertedRange.range, it.value.first!!.typeInRegister, it.value.second?.typeInEditor?.toSubMode() ?: VimStateMachine.SubMode.NONE, if (caretAfterInsertedText) Direction.FORWARDS else Direction.BACKWARDS)
+          } else {
+            val selection = caretsAndSelections[it.key]
+            val textRange = selection?.toVimTextRange() ?: TextRange(it.key.offset.point, it.key.offset.point)
+            injector.changeGroup.deleteRange(editor, it.key, textRange, selection?.type, true, operatorArguments, false)
+            // TODO this exception should not be caught
+            throw ExException("E353: Nothing in register ${injector.registerGroup.getCurrentRegisterForMulticaret()}")
+          }
         }
       } catch (e: ExException) {
         result = false
@@ -74,11 +85,11 @@ public sealed class PutVisualTextBaseAction(
   }
 
   private fun getPutDataForCaret(caret: VimCaret, selection: VimSelection?, count: Int): Pair<TextData?, VisualSelection?> {
-    val lastRegisterChar = injector.registerGroup.lastRegisterChar
+    val lastRegisterChar = injector.registerGroup.getCurrentRegisterForMulticaret()
     val register = caret.registerStorage.getRegister(lastRegisterChar)
     val textData = register?.let {
       TextData(
-        register.text ?: injector.parser.toPrintableString(register.keys),
+        register.text,
         register.type,
         register.transferableData,
         register.name,

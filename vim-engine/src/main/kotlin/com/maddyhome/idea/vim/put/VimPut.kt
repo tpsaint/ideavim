@@ -20,7 +20,7 @@ public interface VimPut {
   public fun putTextForCaretNonVisual(
     caret: VimCaret,
     context: ExecutionContext,
-    textData: TextData?,
+    textData: TextData,
     pasteOptions: PasteOptions,
   ): RangeMarker?
 
@@ -29,7 +29,7 @@ public interface VimPut {
   public fun putTextForCaret(
     caret: VimCaret,
     context: ExecutionContext,
-    textData: TextData?,
+    textData: TextData,
     visualSelection: VisualSelection?,
     pasteOptions: PasteOptions,
     updateVisualMarks: Boolean,

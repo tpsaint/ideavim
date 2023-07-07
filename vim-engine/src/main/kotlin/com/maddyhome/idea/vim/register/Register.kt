@@ -9,6 +9,7 @@ package com.maddyhome.idea.vim.register
 
 import com.maddyhome.idea.vim.api.injector
 import com.maddyhome.idea.vim.command.SelectionType
+import com.maddyhome.idea.vim.ex.ExException
 import org.jetbrains.annotations.NonNls
 import java.awt.event.KeyEvent
 import javax.swing.KeyStroke
@@ -56,15 +57,17 @@ public class Register {
   }
 
   // TODO make it non-null
-  public val text: String?
+  public val text: String
     get() {
       val builder = StringBuilder()
       for (key in keys) {
-        val c = key.keyChar
-        if (c == KeyEvent.CHAR_UNDEFINED) {
-          return null
-        }
-        builder.append(c)
+        builder.append(injector.parser.keyStrokeToChar(key))
+//        val c = key.keyChar
+//        if (c == KeyEvent.CHAR_UNDEFINED) {
+//          builder.append(injector.parser.keyStrokeToChar(key))
+//        } else {
+//          builder.append(c)
+//        }
       }
       return builder.toString()
     }

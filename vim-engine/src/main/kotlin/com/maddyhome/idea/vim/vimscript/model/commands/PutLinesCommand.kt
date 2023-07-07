@@ -47,7 +47,7 @@ public data class PutLinesCommand(val ranges: Ranges, val argument: String) : Co
     val line = if (ranges.size() == 0) -1 else getLine(editor)
     val textData = registerGroup.lastRegister?.let {
       TextData(
-        it.text ?: injector.parser.toKeyNotation(it.keys),
+        it.text,
         SelectionType.LINE_WISE,
         it.transferableData,
         null,
@@ -55,6 +55,7 @@ public data class PutLinesCommand(val ranges: Ranges, val argument: String) : Co
     }
     try {
       editor.forEachCaret {
+        if (textData == null) throw ExException("Text data is empty")
         val insertedRange = injector.put.putTextForCaretNonVisual(
           it,
           context,

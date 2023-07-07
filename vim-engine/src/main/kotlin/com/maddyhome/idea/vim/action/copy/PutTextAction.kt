@@ -36,19 +36,18 @@ public sealed class PutTextBaseAction(
   ): Boolean {
     val count = operatorArguments.count1
     val sortedCarets = editor.sortedCarets()
-    // todo this if is not needed
     val caretToTextData = sortedCarets.associateWith { getTextDataForCaret(it) }
     var result = true
     injector.application.runWriteAction {
       try {
         caretToTextData.forEach {
+          if (it.value == null) throw ExException("Register is empty")
           val insertedRange = injector.put.putTextForCaretNonVisual(
             it.key,
             context,
-            it.value,
+            it.value!!,
             AtCaretPasteOptions(direction, indent, count),
           ) ?: throw ExException("Failed to perform paste")
-          // todo do something with textData nullability
           it.key.moveToTextRange(insertedRange.range, it.value?.typeInRegister!!, VimStateMachine.SubMode.NONE, if (caretAfterInsertedText) Direction.FORWARDS else Direction.BACKWARDS)
         }
       } catch (e: ExException) {
@@ -68,7 +67,7 @@ public sealed class PutTextBaseAction(
     val register = caret.registerStorage.getRegister(registerChar)
     val textData = register?.let {
       TextData(
-        register.text ?: injector.parser.toPrintableString(register.keys),
+        register.text,
         register.type,
         register.transferableData,
         register.name,

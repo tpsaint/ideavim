@@ -442,7 +442,7 @@ public abstract class VimPutBase : VimPut {
   override fun putTextForCaretNonVisual(
     caret: VimCaret,
     context: ExecutionContext,
-    textData: TextData?,
+    textData: TextData,
     pasteOptions: PasteOptions,
   ): RangeMarker? {
     assert(!caret.editor.inVisualMode)
@@ -461,7 +461,7 @@ public abstract class VimPutBase : VimPut {
   override fun putTextForCaret(
     caret: VimCaret,
     context: ExecutionContext,
-    textData: TextData?,
+    textData: TextData,
     visualSelection: VisualSelection?,
     pasteOptions: PasteOptions,
     updateVisualMarks: Boolean,

@@ -61,6 +61,12 @@ public interface VimStringParser {
    * @see <a href="http://vimdoc.sourceforge.net/htmldoc/eval.html#expr-string">:help string</a>
    */
   public fun parseVimScriptString(string: String): String
+
+  /**
+   * This method transforms keystroke to char
+   * E.g. escape psess to 
+   */
+  public fun keyStrokeToChar(key: KeyStroke): Char
 }
 
 public fun key(string: String): KeyStroke {
