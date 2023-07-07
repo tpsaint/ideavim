@@ -159,5 +159,5 @@ public fun VimMarkService.setChangeMarks(caret: ImmutableVimCaret, range: TextRa
 
 public fun VimMarkService.setVisualSelectionMarks(caret: ImmutableVimCaret, range: TextRange) {
   setMark(caret, VimMarkService.SELECTION_START_MARK, range.startOffset)
-  setMark(caret, VimMarkService.SELECTION_END_MARK, range.endOffset)
+  setMark(caret, VimMarkService.SELECTION_END_MARK, range.endOffset - 1)
 }

@@ -25,6 +25,10 @@ public interface VimPut {
   ): RangeMarker?
 
   // TODO when does it return null?
+  /**
+   * see ":h gv":
+   * After using "p" or "P" in Visual mode the text that was put will be selected
+   */
   @RWLockLabel.SelfSynchronized
   public fun putTextForCaret(
     caret: VimCaret,

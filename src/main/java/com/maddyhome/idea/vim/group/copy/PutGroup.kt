@@ -12,12 +12,8 @@ import com.intellij.codeInsight.editorActions.TextBlockTransferable
 import com.intellij.ide.CopyPasteManagerEx
 import com.intellij.ide.DataManager
 import com.intellij.ide.PasteProvider
-import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.application.runWriteAction
-import com.intellij.openapi.editor.Caret
-import com.intellij.openapi.editor.RangeMarker
-import com.intellij.openapi.editor.ex.EditorEx
 import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.util.PlatformUtils
 import com.maddyhome.idea.vim.VimPlugin
@@ -26,31 +22,20 @@ import com.maddyhome.idea.vim.api.VimCaret
 import com.maddyhome.idea.vim.api.VimEditor
 import com.maddyhome.idea.vim.api.getLineEndOffset
 import com.maddyhome.idea.vim.api.injector
-import com.maddyhome.idea.vim.api.setChangeMarks
 import com.maddyhome.idea.vim.command.SelectionType
-import com.maddyhome.idea.vim.command.VimStateMachine
 import com.maddyhome.idea.vim.command.isBlock
 import com.maddyhome.idea.vim.command.isChar
 import com.maddyhome.idea.vim.command.isLine
-import com.maddyhome.idea.vim.common.Direction
 import com.maddyhome.idea.vim.common.TextRange
 import com.maddyhome.idea.vim.diagnostic.debug
 import com.maddyhome.idea.vim.group.NotificationService
-import com.maddyhome.idea.vim.helper.EditorHelper
 import com.maddyhome.idea.vim.helper.RWLockLabel
-import com.maddyhome.idea.vim.helper.moveToInlayAwareOffset
-import com.maddyhome.idea.vim.mark.VimMarkConstants.MARK_CHANGE_POS
-import com.maddyhome.idea.vim.newapi.IjVimCaret
 import com.maddyhome.idea.vim.newapi.IjVimEditor
 import com.maddyhome.idea.vim.newapi.ij
-import com.maddyhome.idea.vim.newapi.vim
-import com.maddyhome.idea.vim.put.AtCaretPasteOptions
 import com.maddyhome.idea.vim.put.PasteOptions
 import com.maddyhome.idea.vim.put.TextData
-import com.maddyhome.idea.vim.put.ToLinePasteOptions
 import com.maddyhome.idea.vim.put.VimPutBase
 import com.maddyhome.idea.vim.put.VisualSelection
-import com.maddyhome.idea.vim.register.RegisterConstants
 import java.awt.datatransfer.DataFlavor
 import java.lang.Integer.max
 import kotlin.math.min
@@ -72,19 +57,18 @@ internal class PutGroup : VimPutBase() {
   }
 
   override fun putForCaret(
-    editor: VimEditor,
     caret: VimCaret,
-    visualSelection: VisualSelection?,
     pasteOptions: PasteOptions,
     indent: Boolean,
-    additionalData: Map<String, Any>,
+    preModificationData: PreModificationData,
     context: ExecutionContext,
     text: TextData
   ): Pair<VimCaret, com.maddyhome.idea.vim.put.RangeMarker>? {
+    val editor = caret.editor
     NotificationService.notifyAboutIdeaPut(editor)
     var result: Pair<VimCaret, com.maddyhome.idea.vim.put.RangeMarker>? = null
     runWriteAction {
-      result = super.putForCaret(editor, caret, visualSelection, pasteOptions, indent, additionalData, context, text)
+      result = super.putForCaret(caret, pasteOptions, indent, preModificationData, context, text)
     }
     return result
   }
@@ -94,77 +78,70 @@ internal class PutGroup : VimPutBase() {
     vimEditor: VimEditor,
     vimContext: ExecutionContext,
     text: TextData,
-    visualSelection: VisualSelection?,
-    insertTextBeforeCaret: Boolean,
-    caretAfterInsertedText: Boolean,
-    indent: Boolean,
-    putToLine: Int,
-    count: Int,
-    subMode: VimStateMachine.SubMode,
-    additionalData: Map<String, Any>,
+    pasteOptions: PasteOptions,
+    additionalData: PreModificationData,
   ): Map<VimCaret, com.maddyhome.idea.vim.put.RangeMarker>? {
-    val pasteProvider = getProviderForPasteViaIde(vimEditor, text.typeInRegister, visualSelection, count) ?: return null
-
-    val editor = (vimEditor as IjVimEditor).editor
-    val context = vimContext.context as DataContext
-    val carets: MutableMap<Caret, RangeMarker> = mutableMapOf()
-    EditorHelper.getOrderedCaretsList(editor).forEach { caret ->
-      // todo refactor me
-      val pasteOptions = if (putToLine == -1) {
-        AtCaretPasteOptions(if (insertTextBeforeCaret) Direction.BACKWARDS else Direction.FORWARDS, indent, count)
-      } else {
-        ToLinePasteOptions(putToLine, indent, count)
-      }
-      
-      val startOffset =
-        prepareDocumentAndGetStartOffsets(
-          vimEditor,
-          IjVimCaret(caret),
-          text.typeInRegister,
-          visualSelection,
-          pasteOptions,
-          additionalData,
-        ).first()
-      val pointMarker = editor.document.createRangeMarker(startOffset, startOffset)
-      caret.moveToInlayAwareOffset(startOffset)
-      carets[caret] = pointMarker
-    }
-
-    val registerChar = text.registerChar
-    if (registerChar != null && registerChar in RegisterConstants.CLIPBOARD_REGISTERS) {
-      pasteProvider.performPaste(context)
-    } else {
-      pasteKeepingClipboard(text) {
-        pasteProvider.performPaste(context)
-      }
-    }
-
-    val caretsToPastedText = mutableMapOf<VimCaret, com.maddyhome.idea.vim.put.RangeMarker>()
-    val lastPastedRegion = if (carets.size == 1) editor.getUserData(EditorEx.LAST_PASTED_REGION) else null
-    carets.forEach { (caret, point) ->
-      val startOffset = point.startOffset
-      point.dispose()
-      if (!caret.isValid) return@forEach
-
-      val caretPossibleEndOffset = lastPastedRegion?.endOffset ?: (startOffset + text.text.length)
-      val endOffset = if (indent) {
-        doIndent(
-          vimEditor,
-          IjVimCaret(caret),
-          vimContext,
-          startOffset,
-          caretPossibleEndOffset,
-        )
-      } else {
-        caretPossibleEndOffset
-      }
-      val vimCaret = caret.vim
-      injector.markService.setChangeMarks(vimCaret, TextRange(startOffset, endOffset))
-      injector.markService.setMark(vimCaret, MARK_CHANGE_POS, startOffset)
-      IjVimCaret(caret).moveToTextRange(TextRange(startOffset, endOffset), text.typeInRegister, subMode, if (caretAfterInsertedText) Direction.FORWARDS else Direction.BACKWARDS)
-      caretsToPastedText[vimCaret] = createRangeMarker(vimEditor, startOffset, endOffset)
-    }
-    return caretsToPastedText
+    // TODO
+    return null
+//    val pasteProvider = getProviderForPasteViaIde(vimEditor, text.typeInRegister, visualSelection, count) ?: return null
+//
+//    val editor = (vimEditor as IjVimEditor).editor
+//    val context = vimContext.context as DataContext
+//    val carets: MutableMap<Caret, RangeMarker> = mutableMapOf()
+//    EditorHelper.getOrderedCaretsList(editor).forEach { caret ->
+//      // todo refactor me
+//      val pasteOptions = if (putToLine == -1) {
+//        AtCaretPasteOptions(if (insertTextBeforeCaret) Direction.BACKWARDS else Direction.FORWARDS, indent, count)
+//      } else {
+//        ToLinePasteOptions(putToLine, indent, count)
+//      }
+//
+//      val startOffset =
+//        prepareDocumentAndGetStartOffsets(
+//          vimEditor,
+//          IjVimCaret(caret),
+//          text.typeInRegister,
+//          pasteOptions,
+//          additionalData,
+//        ).first()
+//      val pointMarker = editor.document.createRangeMarker(startOffset, startOffset)
+//      caret.moveToInlayAwareOffset(startOffset)
+//      carets[caret] = pointMarker
+//    }
+//
+//    val registerChar = text.registerChar
+//    if (registerChar != null && registerChar in RegisterConstants.CLIPBOARD_REGISTERS) {
+//      pasteProvider.performPaste(context)
+//    } else {
+//      pasteKeepingClipboard(text) {
+//        pasteProvider.performPaste(context)
+//      }
+//    }
+//
+//    val caretsToPastedText = mutableMapOf<VimCaret, com.maddyhome.idea.vim.put.RangeMarker>()
+//    val lastPastedRegion = if (carets.size == 1) editor.getUserData(EditorEx.LAST_PASTED_REGION) else null
+//    carets.forEach { (caret, point) ->
+//      val startOffset = point.startOffset
+//      point.dispose()
+//      if (!caret.isValid) return@forEach
+//
+//      val caretPossibleEndOffset = lastPastedRegion?.endOffset ?: (startOffset + text.text.length)
+//      val endOffset = if (indent) {
+//        doIndent(
+//          IjVimCaret(caret),
+//          vimContext,
+//          startOffset,
+//          caretPossibleEndOffset,
+//        )
+//      } else {
+//        caretPossibleEndOffset
+//      }
+//      val vimCaret = caret.vim
+//      injector.markService.setChangeMarks(vimCaret, TextRange(startOffset, endOffset))
+//      injector.markService.setMark(vimCaret, MARK_CHANGE_POS, startOffset)
+//      caretsToPastedText[vimCaret] = createRangeMarker(vimEditor, startOffset, endOffset)
+//    }
+//    return caretsToPastedText
   }
 
   override fun createRangeMarker(editor: VimEditor, startOffset: Int, endOffset: Int): com.maddyhome.idea.vim.put.RangeMarker {
@@ -230,7 +207,6 @@ internal class PutGroup : VimPutBase() {
   }
 
   override fun doIndent(
-    editor: VimEditor,
     caret: VimCaret,
     context: ExecutionContext,
     startOffset: Int,
@@ -239,6 +215,7 @@ internal class PutGroup : VimPutBase() {
     // Temp fix for VIM-2808. Should be removed after rider will fix it's issues
     if (PlatformUtils.isRider()) return endOffset
 
+    val editor = caret.editor
     val startLine = editor.offsetToBufferPosition(startOffset).line
     val endLine = editor.offsetToBufferPosition(endOffset - 1).line
     val startLineOffset = (editor as IjVimEditor).editor.document.getLineStartOffset(startLine)
