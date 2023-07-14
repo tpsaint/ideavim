@@ -16,6 +16,7 @@ import com.maddyhome.idea.vim.api.VimCaret
 import com.maddyhome.idea.vim.api.VimEditor
 import com.maddyhome.idea.vim.api.getLineEndOffset
 import com.maddyhome.idea.vim.api.getText
+import com.maddyhome.idea.vim.api.globalOptions
 import com.maddyhome.idea.vim.api.injector
 import com.maddyhome.idea.vim.api.isLineEmpty
 import com.maddyhome.idea.vim.api.lineLength
@@ -40,6 +41,7 @@ import com.maddyhome.idea.vim.helper.inVisualMode
 import com.maddyhome.idea.vim.helper.mode
 import com.maddyhome.idea.vim.helper.subMode
 import com.maddyhome.idea.vim.mark.VimMarkConstants.MARK_CHANGE_POS
+import com.maddyhome.idea.vim.options.OptionConstants
 import java.lang.RuntimeException
 import java.util.*
 import kotlin.math.abs
@@ -381,8 +383,14 @@ public abstract class VimPutBase : VimPut {
     modifyRegister: Boolean,
   ): RangeMarker? {
     val editor = caret.editor
-    val indent = pasteOptions.shouldAddIndent(textData, visualSelection)
     val preModificationData = PreModificationData(editor, visualSelection)
+
+    if (injector.globalOptions().clipboard.contains(OptionConstants.clipboard_ideaput)) {
+        val insertedRange = putTextViaIde(caret, context, textData, pasteOptions, preModificationData)
+        if (insertedRange != null) return insertedRange
+    }
+
+    val indent = pasteOptions.shouldAddIndent(textData, visualSelection)
     visualSelection?.let {
       deleteSelectedText(editor, visualSelection, OperatorArguments(false, 0, editor.mode, editor.subMode), modifyRegister)
     }
@@ -400,12 +408,12 @@ public abstract class VimPutBase : VimPut {
 
   @RWLockLabel.SelfSynchronized
   protected abstract fun putTextViaIde(
-    vimEditor: VimEditor,
-    vimContext: ExecutionContext,
+    caret: VimCaret,
+    context: ExecutionContext,
     text: TextData,
     pasteOptions: PasteOptions,
     preModificationData: PreModificationData,
-  ): Map<VimCaret, RangeMarker>?
+  ): RangeMarker?
 
   public companion object {
     public val logger: VimLogger by lazy { vimLogger<VimPutBase>() }

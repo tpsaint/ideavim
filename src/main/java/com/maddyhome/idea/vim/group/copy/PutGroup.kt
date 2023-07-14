@@ -12,6 +12,7 @@ import com.intellij.codeInsight.editorActions.TextBlockTransferable
 import com.intellij.ide.CopyPasteManagerEx
 import com.intellij.ide.DataManager
 import com.intellij.ide.PasteProvider
+import com.intellij.openapi.actionSystem.DataContext
 import com.intellij.openapi.actionSystem.PlatformDataKeys
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.ide.CopyPasteManager
@@ -33,6 +34,7 @@ import com.maddyhome.idea.vim.helper.RWLockLabel
 import com.maddyhome.idea.vim.newapi.IjVimEditor
 import com.maddyhome.idea.vim.newapi.ij
 import com.maddyhome.idea.vim.put.PasteOptions
+import com.maddyhome.idea.vim.put.RangeMarker
 import com.maddyhome.idea.vim.put.TextData
 import com.maddyhome.idea.vim.put.VimPutBase
 import com.maddyhome.idea.vim.put.VisualSelection
@@ -45,10 +47,9 @@ internal class PutGroup : VimPutBase() {
     editor: VimEditor,
     typeInRegister: SelectionType,
     visualSelection: VisualSelection?,
-    count: Int,
   ): PasteProvider? {
     if (visualSelection != null && visualSelection.typeInEditor.isBlock) return null
-    if ((typeInRegister.isLine || typeInRegister.isChar) && count == 1) {
+    if (typeInRegister.isLine || typeInRegister.isChar) {
       val context = DataManager.getInstance().getDataContext(editor.ij.contentComponent)
       val provider = PlatformDataKeys.PASTE_PROVIDER.getData(context)
       if (provider != null && provider.isPasteEnabled(context)) return provider
@@ -75,13 +76,19 @@ internal class PutGroup : VimPutBase() {
 
   @RWLockLabel.SelfSynchronized
   override fun putTextViaIde(
-    vimEditor: VimEditor,
-    vimContext: ExecutionContext,
+    caret: VimCaret,
+    context: ExecutionContext,
     text: TextData,
     pasteOptions: PasteOptions,
-    additionalData: PreModificationData,
-  ): Map<VimCaret, com.maddyhome.idea.vim.put.RangeMarker>? {
-    // TODO
+    preModificationData: PreModificationData,
+  ): RangeMarker? {
+    if (pasteOptions.count > 1) return null // todo add support for count
+    val pasteProvider = getProviderForPasteViaIde(caret.editor, text.typeInRegister, preModificationData.visualSelection) ?: return null
+
+    val editor = caret.editor
+    val ijEditor = editor.ij
+    val ijContext = context.context as DataContext
+    val startOffset = prepareDocumentAndGetStartOffsets(editor, caret, text.typeInRegister, pasteOptions, preModificationData)
     return null
 //    val pasteProvider = getProviderForPasteViaIde(vimEditor, text.typeInRegister, visualSelection, count) ?: return null
 //
@@ -94,7 +101,7 @@ internal class PutGroup : VimPutBase() {
 //        AtCaretPasteOptions(if (insertTextBeforeCaret) Direction.BACKWARDS else Direction.FORWARDS, indent, count)
 //      } else {
 //        ToLinePasteOptions(putToLine, indent, count)
-//      }
+//
 //
 //      val startOffset =
 //        prepareDocumentAndGetStartOffsets(
