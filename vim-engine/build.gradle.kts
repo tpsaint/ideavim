@@ -11,7 +11,8 @@ plugins {
     kotlin("jvm")
 //    id("org.jlleitschuh.gradle.ktlint")
     id("com.google.devtools.ksp") version "1.8.21-1.0.11"
-  `maven-publish`
+    `maven-publish`
+    antlr
 }
 
 val kotlinVersion: String by project
@@ -30,7 +31,8 @@ ksp {
 }
 
 afterEvaluate {
-    tasks.named("kspTestKotlin").configure { enabled = false }
+  tasks.named("kspKotlin").configure { dependsOn("generateGrammarSource") }
+  tasks.named("kspTestKotlin").configure { enabled = false }
 }
 
 dependencies {
@@ -43,6 +45,9 @@ dependencies {
 
     compileOnly("org.jetbrains:annotations:24.0.1")
 
+    runtimeOnly("org.antlr:antlr4-runtime:4.10.1")
+    antlr("org.antlr:antlr4:4.10.1")
+
     ksp(project(":annotation-processors"))
     compileOnly(project(":annotation-processors"))
     compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.6.0")
@@ -51,6 +56,19 @@ dependencies {
 tasks {
     val test by getting(Test::class) {
         useJUnitPlatform()
+    }
+
+    generateGrammarSource {
+        maxHeapSize = "128m"
+        arguments.addAll(listOf("-package", "com.maddyhome.idea.vim.regexp.parser.generated", "-visitor"))
+        outputDirectory = file("src/main/kotlin/com/maddyhome/idea/vim/regexp/parser/generated")
+    }
+
+    named("compileKotlin") {
+      dependsOn("generateGrammarSource")
+    }
+    named("compileTestKotlin") {
+      dependsOn("generateTestGrammarSource")
     }
 
     compileKotlin {
