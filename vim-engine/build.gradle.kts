@@ -51,6 +51,8 @@ dependencies {
     ksp(project(":annotation-processors"))
     compileOnly(project(":annotation-processors"))
     compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.6.0")
+
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.0.0")
 }
 
 tasks {
