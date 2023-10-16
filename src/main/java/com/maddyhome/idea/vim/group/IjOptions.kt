@@ -85,7 +85,7 @@ public object IjOptions {
   public val unifyjumps: ToggleOption = addOption(ToggleOption("unifyjumps", GLOBAL, "unifyjumps", true))
   public val vimscriptFunctionAnnotation: ToggleOption = addOption(ToggleOption("vimscriptfunctionannotation", GLOBAL, "vimscriptfunctionannotation", true))
   public val visualdelay: UnsignedNumberOption = addOption(UnsignedNumberOption("visualdelay", GLOBAL, "visualdelay", 100))
-  public val useNewRegex: ToggleOption = addOption(ToggleOption("usenewregex", GLOBAL, "usenewregex", true))
+  public val useNewRegex: ToggleOption = addOption(ToggleOption("usenewregex", GLOBAL, "usenewregex", false))
 
   // This needs to be Option<out VimDataType> so that it can work with derived option types, such as NumberOption, which
   // derives from Option<VimInt>
